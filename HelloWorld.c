@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h> //varför är den här med? (vad gör den?)
+#include <stdlib.h>  //varför är den här med? (vad gör den?)
+                     //svar: för att system("pause"); ska fungera
 
 int main()
 {
@@ -8,6 +9,7 @@ int main()
    system("pause");
    printf("I forgot to bring the usb that i have the compiler on, so you have to do the compiling for now\n");
    //jag gissar att det inte händer en massa dålig skit av att jag sätter in en tom rad mitt i kåden, stämmer det?
+   //svar: nej
    /*so many ways to comment! :O*/
    system("pause");
    return 0;
