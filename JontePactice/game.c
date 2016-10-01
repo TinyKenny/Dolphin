@@ -11,6 +11,7 @@ int main()
     char c;
     printf ("You see another player: [JMPi]xX420sm0k3r360Xx\n do you attack? (y/n)");
     c = getchar();
+
     if (c == 'y' || c == 'Y')
     {
         score += 100;
@@ -26,11 +27,22 @@ int main()
         printf ("You fail!");
         return 0;
     }
+
     if (snacks == true)
+   /* du behöver inte skriva
+   if(snacks == true)
+   eftersom att (snacks == true) retunerar 1 eller 0 och
+   snacks
+   är 1 eller 0
+
+   quick fix:
+   if(snacks)
+   ska det stå istället för
+   if(snacks == true) */
     {
         printf ("You have snacks");
     }
-    else if (snacks == false)
+    else if (snacks == false)//det går att göra likande saker här men vi tar det sen
     {
         printf ("You don't have snacks");
     }
