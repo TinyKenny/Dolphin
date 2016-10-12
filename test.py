@@ -58,4 +58,4 @@ while(1):
         hoes.append({"Name":name, "Price":price, "Performance":perforrmance, "Balance":0})
 
     else:
-        print("What do you mean", answer , "?")
+        print("What do you mean \""+ answer + "\"?")
