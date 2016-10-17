@@ -1,3 +1,5 @@
+space=16 #tecken utrymme
+
 
 def dict_keys_TO_list(rawest_keys):
     raw_keys = str(rawest_keys)
@@ -29,12 +31,12 @@ while(1):
     elif(answer=="inv"):
         keys = dict_keys_TO_list(hoes[0].keys())
         for x in range(len(keys)):
-            print(keys[x] + " "*(16-len(str(keys[x]))), end="")
+            print(keys[x] + " "*(space-len(str(keys[x]))), end="")
         print("")
 
         for x in range(len(hoes)):
             for y in range(len(keys)):
-                print(hoes[x].get(keys[y]), " "*(15-len(str(hoes[x].get(keys[y])))), end="")
+                print(str(hoes[x].get(keys[y]))+ " "*(space-len(str(hoes[x].get(keys[y])))), end="")
             print("")
 
     elif (answer=="use"):
