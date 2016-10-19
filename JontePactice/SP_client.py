@@ -1,5 +1,6 @@
 import socket
 import os
+import _thread
 
 s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 chat_server="localhost" #jag är 10.164.137.191
