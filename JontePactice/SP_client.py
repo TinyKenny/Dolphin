@@ -1,13 +1,12 @@
 import socket
-import sys
-import time
 import os #kanske onödigt därför att vi redan har sys, men vet inte. //Jonte
+			#nej sys används aldrig //Lukas
 from _thread import * #vad gör det? (importerade för att du har den på servern...) //Jonte
+						#det gör att vi kan ga flera threads samtidigdt. dvs lyssna och skicka data samtidigt //Lukas
 
 s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 chat_server="localhost" #jag är 10.164.137.191
-port=5555
-quit=0
+port=5555				#K //Lukas
 try:
 	s.connect((chat_server,port))
 	print ("yay!")
@@ -18,16 +17,16 @@ try:
 	second_data = s.recv(2048)
 	second_reply = second_data.decode('utf-8')
 	print(str(second_reply))
-	while quit==0:
+	while 1:
 		client_message = input(">>>")
 		if client_message == "quit":
-			quit=1
+			break
 		else:
 			s.send(str.encode(client_message))
 			message_data = s.recv(2048)
 			server_message = message_data.decode('utf-8')
 			print (server_message)
-	os.system("pause")
+	os.system("pause") #varför? //Lukas
 	s.close()
 except socket.error as e:
 	print(e)
