@@ -1,34 +1,51 @@
 import socket
-import sys
 import random
 from _thread import *
 
-shaxx_quote=["You want the crucible? I am the crucible.", "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!", "You can fight by my side anytime, Gaurdian"]
+class ClientHandler:
+    common_message=""
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def listenToClient(self, conn):
+        while 1:
+            self.common_message = (conn.recv(2048)).decode("utf-8")
+            print(self.common_message)
+
+    def sendToClient(self, conn):
+        last_common_message = ""
+        while 1:
+            if self.common_message != last_common_message:
+                conn.sendall(str.encode(self.common_message))
+                last_common_message = self.common_message
+
+    def clientHandler(self, sock):
+        shaxx_quote = ["You want the crucible? I am the crucible.",
+                       "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
+                       "You can fight by my side anytime, Gaurdian"]
+        sock.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote) - 1))]))
+        start_new_thread(self.sendToClient, (self, sock,))
+        start_new_thread(self.listenToClient, (self, sock,))
+
 host = ''
 port = 5555
+max_population=5
+client_handlers=[]
+common_message=""
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     s.bind((host, port))
 except socket.error as e:
     print(e)
 
-s.listen(5)
-print("Waiting for connection")
-
-def threaded_client_handler(conn):
-    conn.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote)-1))]))
-    print("yes this is the client speaking")
-    while 1:
-        data = conn.recv(2048)
-        reply = 'Server output: ' + data.decode('utf-8')
-        if not data:
-            break
-        conn.sendall(str.encode(reply))
-    conn.close()
+s.listen(max_population)
+print("Listening @ port",port)
+print("Max population:",max_population)
 
 while 1:
     conn, addr = s.accept()
-    print('connected to ' + addr[0] + ':' + str(addr[1]))
-    start_new_thread(threaded_client_handler, (conn, ))
+    client_handlers.append(ClientHandler)
+    print('Connected to ' + addr[0] + ':' + str(addr[1]))
+    start_new_thread(client_handlers[len(client_handlers)-1].clientHandler, (ClientHandler, conn, ))
+
+
