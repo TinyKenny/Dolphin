@@ -1,6 +1,9 @@
 import socket
 import sys
+import random
 from _thread import *
+
+shaxx_quote=["You want the crucible? I am the crucible.", "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!", "You can fight by my side anytime, Gaurdian"]
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = ''
@@ -15,7 +18,7 @@ s.listen(5)
 print("Waiting for connection")
 
 def threaded_client_handler(conn):
-    conn.send(str.encode("Hello World!"))
+    conn.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote)-1))]))
     print("yes this is the client speaking")
     while 1:
         data = conn.recv(2048)
