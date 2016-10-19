@@ -14,23 +14,18 @@ except socket.error as e:
 s.listen(5)
 print("Waiting for connection")
 
-def threaded_client_handler(conn, IPv4, port):
+def threaded_client_handler(conn):
     conn.send(str.encode("Hello World!"))
+    print("yes this is the client speaking")
     while 1:
-
-        try:
-            data = conn.recv(2048)
-            if not data:
-                break
-            reply = 'client says: ' + data.decode('utf-8')
-            #conn.sendall(str.encode(reply))
-        except socket.error as e:
-            print(e)
+        data = conn.recv(2048)
+        reply = 'Server output: ' + data.decode('utf-8')
+        if not data:
             break
-    print("closed connection to"+IPv4+":"+port)
+        conn.sendall(str.encode(reply))
     conn.close()
 
 while 1:
     conn, addr = s.accept()
     print('connected to ' + addr[0] + ':' + str(addr[1]))
-    start_new_thread(threaded_client_handler, (conn,  addr[0], str(addr[1])))
+    start_new_thread(threaded_client_handler, (conn, ))
