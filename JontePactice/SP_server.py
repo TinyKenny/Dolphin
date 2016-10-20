@@ -15,28 +15,37 @@ class ClientHandler:
                 raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
             elif (network_protocol == "AF_INET,"):
                 raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+                raddr= raddr[1:-1]
+                raddr=raddr.replace("'", "")
+
         except:
             print("[Error] Cannot identify raddr")
             raddr="[Error] Cannot identify raddr"
         return raddr
 
     def listenToClient(self, conn, username):
-
-        raddr=self.getRaddr(conn
+        raddr=""
+        try:
+            raddr=self.getRaddr(self, conn)
+        except:
+            raddr = self.getRaddr(conn)
         while 1:
             try:
                 self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
                 print(self.common_message)
+
                 if self.common_message=="root:terminate":
                     print("Terminating server")
+                    s.close()
                     os._exit(0)
-            except ConnectionError:
+            except ConnectionResetError:
                 self.common_message= str(username) + " disconnected"
                 print("Disconnected from "+raddr)
+                self.is_broken=1
                 break
 
     def sendToClient(self, conn):
-        last_common_message = ""
+        last_common_message = self.common_message
         while 1:
             if self.common_message != last_common_message:
                 try:
