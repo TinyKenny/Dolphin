@@ -1,6 +1,7 @@
 import socket
 import random
 from _thread import *
+import os
 
 class ClientHandler:
     common_message=""
@@ -22,6 +23,9 @@ class ClientHandler:
             try:
                 self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
                 print(self.common_message)
+                if self.common_message=="root:terminate":
+                    print("Terminating server")
+                    os._exit(0)
             except ConnectionResetError:
                 self.common_message= str(username) + " disconnected"
                 print("Disconnected from "+raddr)
