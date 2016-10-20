@@ -3,7 +3,7 @@ import os
 import _thread
 
 s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-chat_server="0:0:0:0:0:0:0:1:/128" #jag är 10.164.137.191
+chat_server="0:0:0:0:0:0:0:1" #jag är 10.164.137.191
 port=5555				#K //Lukas
 username = input("Enter your username:\n>>>")
 try:

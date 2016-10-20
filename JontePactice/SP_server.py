@@ -10,6 +10,7 @@ class ClientHandler:
         raddr=raddr[-20:-2]
         raddr=raddr.replace("'", "", 2)
         raddr=raddr.replace(", ", ":", 1)
+
         while 1:
             try:
                 self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
@@ -32,7 +33,8 @@ class ClientHandler:
     def clientHandler(self, sock):
         shaxx_quote = ["You want the crucible? I am the crucible.",
                        "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
-                       "You can fight by my side anytime, Gaurdian"]
+                       "You can fight by my side anytime, Gaurdian",
+                       "Is english class canceld tomorrow?"]
         sock.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote) - 1))]))
         username = (conn.recv(2048)).decode("utf-8")
         start_new_thread(self.sendToClient, (self, sock,))
