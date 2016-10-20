@@ -29,7 +29,6 @@ class ClientHandler:
                 except ConnectionResetError:
                     break
 
-
     def clientHandler(self, sock):
         shaxx_quote = ["You want the crucible? I am the crucible.",
                        "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
@@ -45,7 +44,7 @@ max_population=5
 client_handlers=[]
 common_message=""
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
 try:
     s.bind((host, port))
