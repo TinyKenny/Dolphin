@@ -25,9 +25,13 @@ def send_messages():
 	s.close()
 def recieve_messages():
 	while True:
-		message_data = s.recv(2048)
-		server_message = message_data.decode('utf-8')
-		print (server_message)
+		try:
+			message_data = s.recv(2048)
+			server_message = message_data.decode('utf-8')
+			print (server_message)
+		except ConnectionAbortedError as e:
+			print("Disconnected from:", chat_server)
+			break
 	s.close()
 try:
 	_thread.start_new_thread(send_messages,())
