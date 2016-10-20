@@ -15,7 +15,6 @@ try:
 	s.send(str.encode(username))
 except socket.error as e:
 	print(e)
-	exit(1)
 def send_messages():
 	while True:
 		client_message = input(">>>")

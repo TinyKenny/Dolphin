@@ -6,10 +6,17 @@ class ClientHandler:
     common_message=""
 
     def listenToClient(self, conn, username):
-        raddr= str(conn)
-        raddr=raddr[-20:-2]
-        raddr=raddr.replace("'", "", 2)
-        raddr=raddr.replace(", ", ":", 1)
+        raw = str(conn)
+        raddr=""
+        network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
+
+        if network_protocol=="AF_INET6":
+            raddr = raw[raw.index("raddr=")+len("raddr="):len(raw)-1]
+        elif(network_protocol=="AF_INET,"):
+            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+        else:
+            print("[Error] Cannot identify networkprotocol")
+            exit()
 
         while 1:
             try:
@@ -45,8 +52,16 @@ port = 5555
 max_population=5
 client_handlers=[]
 common_message=""
+network_protocol= "IPv6"
 
-s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+s = socket
+if network_protocol=="IPv6":
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+elif network_protocol=="IPv4":
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+else:
+    print("Invalid network protocol")
+    exit()
 
 try:
     s.bind((host, port))
