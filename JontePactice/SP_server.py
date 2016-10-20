@@ -6,19 +6,23 @@ import os
 class ClientHandler:
     common_message=""
 
-    def listenToClient(self, conn, username):
+    def getRaddr(self, conn):
         raw = str(conn)
-        raddr=""
-        network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
+        raddr = ""
+        try:
+            network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
+            if network_protocol == "AF_INET6":
+                raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+            elif (network_protocol == "AF_INET,"):
+                raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+        except:
+            print("[Error] Cannot identify raddr")
+            raddr="[Error] Cannot identify raddr"
+        return raddr
 
-        if network_protocol=="AF_INET6":
-            raddr = raw[raw.index("raddr=")+len("raddr="):len(raw)-1]
-        elif(network_protocol=="AF_INET,"):
-            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-        else:
-            print("[Error] Cannot identify networkprotocol")
-            exit()
+    def listenToClient(self, conn, username):
 
+        raddr=self.getRaddr(conn
         while 1:
             try:
                 self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
@@ -26,7 +30,7 @@ class ClientHandler:
                 if self.common_message=="root:terminate":
                     print("Terminating server")
                     os._exit(0)
-            except ConnectionResetError:
+            except ConnectionError:
                 self.common_message= str(username) + " disconnected"
                 print("Disconnected from "+raddr)
                 break
