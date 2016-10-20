@@ -5,25 +5,39 @@ from _thread import *
 class ClientHandler:
     common_message=""
 
-    def listenToClient(self, conn):
+    def listenToClient(self, conn, username):
+        raddr= str(conn)
+        raddr=raddr[-20:-2]
+        raddr=raddr.replace("'", "", 2)
+        raddr=raddr.replace(", ", ":", 1)
         while 1:
-            self.common_message = (conn.recv(2048)).decode("utf-8")
-            print(self.common_message)
+            try:
+                self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+                print(self.common_message)
+            except ConnectionResetError:
+                self.common_message= str(username) + " disconnected"
+                print("Disconnected from "+raddr)
+                break
 
     def sendToClient(self, conn):
         last_common_message = ""
         while 1:
             if self.common_message != last_common_message:
-                conn.sendall(str.encode(self.common_message))
-                last_common_message = self.common_message
+                try:
+                    conn.sendall(str.encode(self.common_message))
+                    last_common_message = self.common_message
+                except ConnectionResetError:
+                    break
+
 
     def clientHandler(self, sock):
         shaxx_quote = ["You want the crucible? I am the crucible.",
                        "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
                        "You can fight by my side anytime, Gaurdian"]
         sock.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote) - 1))]))
+        username = (conn.recv(2048)).decode("utf-8")
         start_new_thread(self.sendToClient, (self, sock,))
-        start_new_thread(self.listenToClient, (self, sock,))
+        start_new_thread(self.listenToClient, (self, sock, username, ))
 
 host = ''
 port = 5555
