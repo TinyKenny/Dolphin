@@ -1,1 +1,2 @@
-Vi fï¿½rsï¿½kte fï¿½rstï¿½ instance variable "common_message"s upptrï¿½dande och lyckades till viss del
+15:47 2016-10-21
+Vi försökte förstå instance variable "common_message"s uppträdande och lyckades till viss del
