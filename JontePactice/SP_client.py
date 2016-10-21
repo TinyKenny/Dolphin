@@ -15,7 +15,6 @@ try:
 	s.send(str.encode(username))
 except socket.error as e:
 	print(e)
-	exit(1)
 def send_messages():
 	while True:
 		client_message = input(">>>")
@@ -31,7 +30,11 @@ def recieve_messages():
 			server_message = message_data.decode('utf-8')
 			print (server_message)
 		except ConnectionAbortedError as e:
+<<<<<<< HEAD
 			print (e)
+=======
+			print("Disconnected from:", chat_server)
+>>>>>>> origin/master
 			break
 	s.close()
 try:
