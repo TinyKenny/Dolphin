@@ -1,0 +1,1 @@
+Vi f�rs�kte f�rst� instance variable "common_message"s upptr�dande och lyckades till viss del
