@@ -1,9 +1,9 @@
 import socket
 import os
-import _thread
+from _thread import *
 
-s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-chat_server="0:0:0:0:0:0:0:1" #jag är 10.164.137.191
+s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+chat_server="127.0.0.1" #jag är 10.164.137.191
 port=5555				#K //Lukas
 username = input("Enter your username:\n>>>")
 try:
@@ -26,13 +26,17 @@ def send_messages():
 	s.close()
 def recieve_messages():
 	while True:
-		message_data = s.recv(2048)
-		server_message = message_data.decode('utf-8')
-		print (server_message)
+		try:
+			message_data = s.recv(2048)
+			server_message = message_data.decode('utf-8')
+			print (server_message)
+		except ConnectionAbortedError as e:
+			print (e)
+			break
 	s.close()
 try:
-	_thread.start_new_thread(send_messages,())
-	_thread.start_new_thread(recieve_messages,())
+	start_new_thread(send_messages,())
+	start_new_thread(recieve_messages,())
 except _thread.error as te:
 	print(te)
 while True:

@@ -46,7 +46,7 @@ max_population=5
 client_handlers=[]
 common_message=""
 
-s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     s.bind((host, port))
@@ -61,6 +61,6 @@ while 1:
     conn, addr = s.accept()
     client_handlers.append(ClientHandler)
     print('Connected to ' + addr[0] + ':' + str(addr[1]))
-    start_new_thread(client_handlers[len(client_handlers)-1].clientHandler, (ClientHandler, conn, ))
+    start_new_thread(client_handlers[0].clientHandler, (ClientHandler, conn, ))
 
 
