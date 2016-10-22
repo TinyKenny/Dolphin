@@ -2,9 +2,9 @@ import socket
 import os
 from _thread import *
 
-s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-chat_server="127.0.0.1" #jag är 10.164.137.191
-port=5555				#K //Lukas
+s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+chat_server="0:0:0:0:0:0:0:1" #127.0.0.1		0:0:0:0:0:0:0:1
+port=5555
 username = input("Enter your username:\n>>>")
 try:
 	s.connect((chat_server,port))
