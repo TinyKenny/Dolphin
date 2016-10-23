@@ -12,7 +12,7 @@ if username == "root": #enables client developer mode
 			s=socket.socket(socket.AF_INET, socket.SOCK_STREAM) #creates a socket object for IPv4
 			valid_protocol = True #IPv4 is a valid protocol
 		elif address_protocol.lower() == "ipv6":
-			s=socket.socket(socket.AF_INET6, sokcet.SOCK_STREAM) #creates a socket object for IPv6
+			s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM) #creates a socket object for IPv6
 			valid_protocol = True #IPv6 is a valid protocol
 		else:
 			print("Invalid network protocol")
@@ -51,11 +51,13 @@ def recieve_messages(): #the function that recieves messages
 		except ConnectionAbortedError as e: #this will happen when the user enters "quit" or when the server is shut down
 			print (e) #prints out the error that specifies how the connection was lost
 			print("Disconnected from:", chat_server)
+			os.system("pause")
+			os._exit(1)
 			break
 	return
 
 sender = threading.Thread(target=send_messages,daemon=0)
-reciever = threading.Thread(target=recieve_messages,daemon=1)
+reciever = threading.Thread(target=recieve_messages,daemon=0)
 sender.start()
 reciever.start()
 """
