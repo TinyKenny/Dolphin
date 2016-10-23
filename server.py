@@ -1,81 +1,101 @@
 import socket
 import random
-from _thread import *
+import threading
 import os
+import time
 
-class ClientHandler:
+class CommmonMessageHoster:
     common_message=""
 
-    def getRaddr(self, conn):
-        raw = str(conn)
-        raddr = ""
+def getRaddr(conn):
+    raw = str(conn)
+    raddr = ""
+    try:
+        network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
+        if network_protocol == "AF_INET6":
+            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+            raddr = raddr.replace(", 0, 0)", "")
+            raddr = raddr.replace("', ", ":")
+            raddr = raddr[2:]
+        elif (network_protocol == "AF_INET,"):
+            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+            raddr= raddr[1:-1]
+            raddr=raddr.replace("'", "")
+    except:
+        print("[Error] Cannot identify raddr")
+        raddr="[Error] Cannot identify raddr"
+    return raddr
+
+def listenToClient(conn, username):
+    raddr=""
+    try:
+        raddr=getRaddr(conn)
+    except:
+        raddr = getRaddr(conn)
+    while 1:
         try:
-            network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
-            if network_protocol == "AF_INET6":
-                raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-                raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-                raddr = raddr.replace(", 0, 0)", "")
-                raddr = raddr.replace("', ", ":")
-                raddr = raddr[2:]
-            elif (network_protocol == "AF_INET,"):
-                raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-                raddr= raddr[1:-1]
-                raddr=raddr.replace("'", "")
-        except:
-            print("[Error] Cannot identify raddr")
-            raddr="[Error] Cannot identify raddr"
-        return raddr
+            cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+            print(cmh.common_message)
+            thread_manager.acquire() #hämtar managern
+            thread_manager.notify()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+            thread_manager.release()  # detta gör att manangern kan gå till andra trådar
+            if cmh.common_message=="root:terminate":
+                print("Terminating server")
+                s.close()
+                os._exit(0)
+        except ConnectionResetError:
+            cmh.common_message= str(username) + " disconnected"
+            break
 
-    def listenToClient(self, conn, username):
-        raddr=""
+def sendToClient(conn):
+    while 1:
+        thread_manager.acquire() #hämtar managern
+        thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
+                              #automatiskt: thread_manager.release() #se rad 3 under
+                              # när den har blivt notifierad så hämtar den managern
+        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
+                                # detta sker även här för att notify ska sprida sig till alla
+        thread_manager.release() #detta gör att manangern kan gå till andra trådar
         try:
-            raddr=self.getRaddr(self, conn)
-        except:
-            raddr = self.getRaddr(conn)
-        while 1:
-            try:
-                self.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
-                print(self.common_message)
-                if self.common_message=="root:terminate":
-                    print("Terminating server")
-                    s.close()
-                    os._exit(0)
-            except ConnectionResetError:
-                self.common_message= str(username) + " disconnected"
-                print("Disconnected from "+raddr)
-                self.is_broken=1
-                break
+            conn.sendall(str.encode(cmh.common_message))
+            time.sleep(0.01) #för att hindra den från att notifiera sig själv
+        except ConnectionResetError:
+            pass
 
-    def sendToClient(self, conn):
-        last_common_message = self.common_message
-        while 1:
-            if self.common_message != last_common_message:
-                try:
-                    conn.sendall(str.encode(self.common_message))
-                    last_common_message = self.common_message
-                except ConnectionResetError:
-                    break
+def clientHandler(sock):
+    random_welcome_message = ["You want the crucible? I am the crucible.",
+                              "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
+                              "You can fight by my side anytime, Gaurdian",
+                              "Is english class canceld tomorrow?"]
+    sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
+    username = (sock.recv(2048)).decode("utf-8")
+    raddr = getRaddr(sock)
+    sender = threading.Thread(target=sendToClient,
+                              daemon=1,
+                              kwargs={'conn':sock},
+                              name="S" + raddr)
+    listner= threading.Thread(target=listenToClient,
+                              daemon=1,
+                              kwargs={'conn':sock, 'username':username},
+                              name="L" + raddr)
+    sender.start()
+    listner.start()
 
-    def clientHandler(self, sock):
-        shaxx_quote = ["You want the crucible? I am the crucible.",
-                       "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
-                       "You can fight by my side anytime, Gaurdian",
-                       "Is english class canceld tomorrow?"]
-        sock.send(str.encode(shaxx_quote[random.randint(0, (len(shaxx_quote) - 1))]))
-        username = (conn.recv(2048)).decode("utf-8")
-        start_new_thread(self.sendToClient, (self, sock,))
-        start_new_thread(self.listenToClient, (self, sock, username, ))
+    while listner.is_alive():
+        time.sleep(0.1)
+    print("Disconnected from " + raddr)
 
 host = ''
 port = 5555
 max_population=5
 client_handlers=[]
-common_message=""
 network_protocol= "IPv6"
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+cmh = CommmonMessageHoster()
+lock = threading.Lock()
+thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
+serverIP="placeholder4serverIP"
+
 if network_protocol=="IPv6":
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 elif network_protocol=="IPv4":
@@ -90,15 +110,25 @@ except socket.error as e:
     print("Failed to bind\n", e)
     os._exit(1)
 
-s.listen(max_population)
-print("Listening @ port",port)
+s.listen()
 print("Using "+network_protocol)
 print("Max population:",max_population)
+print("Listening @ ",serverIP + ":" + str(port))
 
 while 1:
-    conn, addr = s.accept()
-    client_handlers.append(ClientHandler)
-    print('Connected to ' + addr[0] + ':' + str(addr[1]))
-    start_new_thread(client_handlers[len(client_handlers)-1].clientHandler, (ClientHandler, conn, ))
+    for n in range(len(client_handlers)):
+        if not client_handlers[n].is_alive():
+            client_handlers.pop(n)
+            break
 
+    sock, address = s.accept()
+    if len(client_handlers) > max_population:
+        sock.send(str.encode("Server full, try again later"))
+        sock.close()
+        continue #skippar resten av loopen och börjar om från början
 
+    client_handlers.append(threading.Thread(kwargs={'sock':sock}, #passar sock som argument. kwargs=keyword arguments
+                                            target=clientHandler, # när den startar kommer den att starta med clientHandler
+                                            daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
+    client_handlers[len(client_handlers)-1].start()               # startar threaden
+    print('connected to ' + address[0] + ':' + str(address[1]))
