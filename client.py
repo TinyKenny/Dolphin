@@ -1,45 +1,64 @@
 import socket
 import os
-from _thread import *
-
-s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-chat_server="0:0:0:0:0:0:0:1" #127.0.0.1		0:0:0:0:0:0:0:1
-port=5555
+import threading
+#Yes, I know, none of the comments are in swedish. deal with it
 username = input("Enter your username:\n>>>")
+if username == "root": #enables client developer mode
+	developer_mode = True #Boolean that keeps track of wether developer mode is active or not
+	valid_protocol = False #you haven't even entered a protocol yet! :P
+	while valid_protocol == False:
+		address_protocol = input("IP protocol? (IPv4 or IPv6)\n")
+		if address_protocol.lower() == "ipv4":
+			s=socket.socket(socket.AF_INET, socket.SOCK_STREAM) #creates a socket object for IPv4
+			valid_protocol = True #IPv4 is a valid protocol
+		elif address_protocol.lower() == "ipv6":
+			s=socket.socket(socket.AF_INET6, sokcet.SOCK_STREAM) #creates a socket object for IPv6
+			valid_protocol = True #IPv6 is a valid protocol
+		else:
+			print("Invalid network protocol")
+	chat_server = input("IP address?\n")
+	port = int(input("Port?\n"))
+	username = input("Username on server?\n") #to make it possible to enable client dev mode without connecting as root
+else: #default values
+	developer_mode = False #self-explanatory
+	chat_server="0:0:0:0:0:0:0:1" #server address
+	port=5555 #server port
+	s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM) #creates socket object for IPv6
 try:
 	s.connect((chat_server,port))
 	print ("connected to:",chat_server)
-	data = s.recv(2048)
-	motd = 'Message of the day: ' + data.decode('utf-8')
+	data = s.recv(2048) #recieve the message of the day
+	motd = "Message of the day: " + data.decode('utf-8') #currently just a random quote
 	print(str(motd))
-	s.send(str.encode(username))
-except socket.error as e:
+	s.send(str.encode(username)) #inform the server of your username
+except socket.error as e: #couldn't connect to given IP + port
 	print(e)
-def send_messages():
+def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
-		if client_message == "quit":
+		if client_message == "quit": #ends the while-loop, go to line 52
 			break
 		else:
 			s.send(str.encode(client_message))
 	s.close()
-def recieve_messages():
+	return
+def recieve_messages(): #the function that recieves messages
 	while True:
 		try:
 			message_data = s.recv(2048)
 			server_message = message_data.decode('utf-8')
 			print (server_message)
-		except ConnectionAbortedError as e:
-			print (e)
+		except ConnectionAbortedError as e: #this will happen when the user enters "quit" or when the server is shut down
+			print (e) #prints out the error that specifies how the connection was lost
 			print("Disconnected from:", chat_server)
 			break
-	s.close()
-try:
-	start_new_thread(send_messages,())
-	start_new_thread(recieve_messages,())
-except _thread.error as te:
-	print(te)
-while True:
+	return
+
+sender = threading.Thread(target=send_messages,daemon=0)
+reciever = threading.Thread(target=recieve_messages,daemon=1)
+sender.start()
+reciever.start()
+"""
+while True: #stops the client from instantly closing after starting the send_messages and recieve_messages threads
 	pass
-
-
+"""
