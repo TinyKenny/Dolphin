@@ -5,7 +5,7 @@ import threading
 def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
-		if client_message == "quit": #ends the while-loop, go to line 52
+		if client_message == "quit": #ends the while-loop, go to line 20
 			break
 		else:
 			s.send(str.encode(client_message))
@@ -59,7 +59,7 @@ except socket.error as e: #couldn't connect to given IP + port
 	os.system("pause")
 	os._exit(1)
 finally:
-	sender = threading.Thread(target=send_messages,daemon=0)
-	reciever = threading.Thread(target=recieve_messages,daemon=0)
+	sender = threading.Thread(target=send_messages,daemon=0) #function @ line 5
+	reciever = threading.Thread(target=recieve_messages,daemon=0) #function @ line 14
 	sender.start()
 	reciever.start()
