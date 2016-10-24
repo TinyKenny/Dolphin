@@ -88,12 +88,35 @@ def clientHandler(sock):
 
 config = configparser.ConfigParser()
 config.read("config_server.ini")
-print ("select configuration:\n"+str(config.sections()))
+print ('Enter "new" to create a new configuration profile, or select a pre-existing profile:\n'+str(config.sections()))
 profile = input(">>>")
+if str.lower(profile) == "new":
+	profile = input("Profile name: ")
+	while profile in config.sections():
+		print("That profile name is already taken!")
+		profile = input("Profile name: ")
+	config[profile] = {}
+	network_protocol = input("Network protocol (IPv4/IPv6): ")
+	while str.lower(network_protocol) != ("ipv4" and "ipv6"):
+		print("Invalid protocol, it has to be IPv4 or IPv6!")
+		network_protocol = str(input("Network protocol (IPv4/IPv6): "))
+	config[profile]["network_protocol"] = network_protocol
+	port = int(input("Port: "))
+	config[profile]["port"] = str(port)
+	max_population = int(input("Max population: "))
+	config[profile]["max_population"] = str(max_population)
+	config.write(open("config_server.ini","w"))
+elif profile in config.sections():
+	network_protocol= str(config[profile]["network_protocol"])
+	port = int(config[profile]["port"])
+	max_population= int(config[profile]["max_population"])
+else:
+	print("invalid profile selected, default profile has been selected automatically")
+	profile = "default"
+	network_protocol= str(config[profile]["network_protocol"])
+	port = int(config[profile]["port"])
+	max_population= int(config[profile]["max_population"])
 host = ''
-port = int(config[profile]["port"])
-max_population= int(config[profile]["max_population"])
-network_protocol= str(config[profile]["network_protocol"])
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()
@@ -102,9 +125,9 @@ thread_manager = threading.Condition(lock) #tänk att detta är en manager som t
 s = socket
 
 
-if network_protocol=="IPv6":
+if str.lower(network_protocol)=="ipv6":
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-elif network_protocol=="IPv4":
+elif str.lower(network_protocol)=="ipv4":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 else:
     print("Invalid network protocol")
