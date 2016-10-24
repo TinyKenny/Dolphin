@@ -3,6 +3,7 @@ import random
 import threading
 import os
 import time
+import configparser
 
 class CommmonMessageHoster:
     common_message=""
@@ -85,16 +86,21 @@ def clientHandler(sock):
         time.sleep(0.1)
     print("Disconnected from " + raddr)
 
+config = configparser.ConfigParser()
+config.read("config_server.ini")
+print ("select configuration:\n"+str(config.sections()))
+profile = input(">>>")
 host = ''
-port = 5555
-max_population=5
+port = int(config[profile]["port"])
+max_population= int(config[profile]["max_population"])
+network_protocol= str(config[profile]["network_protocol"])
+serverIP="placeholder4serverIP"
 client_handlers=[]
-network_protocol= "IPv6"
 cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
-serverIP="placeholder4serverIP"
+
 
 if network_protocol=="IPv6":
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
