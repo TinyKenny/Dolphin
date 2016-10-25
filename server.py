@@ -4,6 +4,7 @@ import threading
 import os
 import time
 import configparser
+from sys import platform
 
 class CommmonMessageHoster:
     common_message=""
@@ -85,7 +86,8 @@ def clientHandler(sock):
     while listner.is_alive():
         time.sleep(0.1)
     print("Disconnected from " + raddr)
-
+if platform == "win32":
+	os.system("mode con: cols=90 lines=30")
 config = configparser.ConfigParser()
 config.read("config_server.ini")
 print ('Enter "new" to create a new configuration profile, or select a pre-existing profile:\n'+str(config.sections()))
@@ -101,9 +103,17 @@ if str.lower(profile) == "new":
 		print("Invalid protocol, it has to be IPv4 or IPv6!")
 		network_protocol = str(input("Network protocol (IPv4/IPv6): "))
 	config[profile]["network_protocol"] = network_protocol
-	port = int(input("Port: "))
+	port = input("Port: ")
+	while not str.isdigit(port):
+		print("invalid port, try again.")
+		port = input("port: ")
+	port = int(port)
 	config[profile]["port"] = str(port)
-	max_population = int(input("Max population: "))
+	max_population = input("Max population: ")
+	while not str.isdigit(max_population):
+		print("you should only enter numbers here")
+		max_population = input("Max population: ")
+	max_population = int(max_population)
 	config[profile]["max_population"] = str(max_population)
 	config.write(open("config_server.ini","w"))
 elif profile in config.sections():
