@@ -52,6 +52,7 @@ def recieve_messages(): #the function that recieves messages
 	return
 
 s=socket
+address_protocol="ipv4"
 chat_server="127.0.0.1"
 port=5555
 username=""
@@ -79,7 +80,7 @@ else:
 		username = input("Username on server?\n")  # to make it possible to enable client dev mode without connecting as root
 
 while True:
-		address_protocol = input("IP protocol? (IPv4 or IPv6)\n>>>")
+#		address_protocol = input("IP protocol? (IPv4 or IPv6)\n>>>")
 		if address_protocol.lower() == "ipv4":
 			break #IPv4 is a valid protocol
 		elif address_protocol.lower() == "ipv6":

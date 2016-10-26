@@ -4,6 +4,7 @@ import threading
 import os
 import time
 import configparser
+import unicurses
 from sys import platform
 
 class CommmonMessageHoster:
