@@ -29,25 +29,29 @@ def getRaddr(conn):
     return raddr
 
 def listenToClient(conn, username):
-    raddr=""
-    try:
-        raddr=getRaddr(conn)
-    except:
-        raddr = getRaddr(conn)
-    while 1:
-        try:
-            cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
-            print(cmh.common_message)
-            thread_manager.acquire() #hämtar managern
-            thread_manager.notify()  #notifera en random tråd som vändtar, kräver att managern är i tråden
-            thread_manager.release()  # detta gör att manangern kan gå till andra trådar
-            if cmh.common_message=="root:terminate":
-                print("Terminating server")
-                s.close()
-                os._exit(0)
-        except ConnectionResetError:
-            cmh.common_message= str(username) + " disconnected"
-            break
+	raddr=""
+	try:
+		raddr=getRaddr(conn)
+	except:
+		raddr = getRaddr(conn)
+	while 1:
+		try:
+			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+			print(cmh.common_message)
+			thread_manager.acquire() #hämtar managern
+			thread_manager.notify()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
+			if username=="root":
+				if cmh.common_message=="root:/terminate":
+					print("Terminating server")
+					s.close()
+					os._exit(0)
+				elif cmh.common_message=="root:/enumerate":
+					cmh.common_message=str(threading.enumerate())
+#				elif cmh.common_message.startswith("root:/kick "):
+		except ConnectionResetError:
+			cmh.common_message= str(username) + " disconnected"
+			break
 
 def sendToClient(conn):
     while 1:
@@ -65,27 +69,41 @@ def sendToClient(conn):
             pass
 
 def clientHandler(sock):
-    random_welcome_message = ["You want the crucible? I am the crucible.",
+	global taken_usernames
+	random_welcome_message = ["You want the crucible? I am the crucible.",
                               "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
                               "You can fight by my side anytime, Gaurdian",
                               "Is english class canceld tomorrow?"]
-    sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
-    username = (sock.recv(2048)).decode("utf-8")
-    raddr = getRaddr(sock)
-    sender = threading.Thread(target=sendToClient,
-                              daemon=1,
+	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
+	username = (sock.recv(2048)).decode("utf-8")
+	raddr = getRaddr(sock)
+	if username not in taken_usernames:
+		taken_usernames.update([username])
+	elif username in taken_usernames:
+		sock.send(str.encode("that username is already taken"))
+		print("Disconnected from " + raddr)
+		sock.close()
+		return
+	else:
+		print("shit got weird")
+		sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
+		print("Disconnected from " + raddr)
+		sock.close()
+		return
+	sender = threading.Thread(target=sendToClient,
+							  daemon=1,
                               kwargs={'conn':sock},
                               name="S" + raddr)
-    listner= threading.Thread(target=listenToClient,
+	listner= threading.Thread(target=listenToClient,
                               daemon=1,
                               kwargs={'conn':sock, 'username':username},
                               name="L" + raddr)
-    sender.start()
-    listner.start()
+	sender.start()
+	listner.start()
 
-    while listner.is_alive():
-        time.sleep(0.1)
-    print("Disconnected from " + raddr)
+	while listner.is_alive():
+		time.sleep(0.1)
+	print("Disconnected from " + raddr)
 
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")
@@ -134,7 +152,7 @@ cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
-
+taken_usernames=set()
 
 if str.lower(network_protocol)=="ipv6":
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
@@ -156,19 +174,18 @@ print("Max population:",max_population)
 print("Listening @ ",serverIP + ":" + str(port))
 
 while 1:
-    for n in range(len(client_handlers)):
-        if not client_handlers[n].is_alive():
-            client_handlers.pop(n)
-            break
+	for n in range(len(client_handlers)):
+		if not client_handlers[n].is_alive():
+			client_handlers.pop(n)
+			break
 
-    sock, address = s.accept()
-    if len(client_handlers) > max_population:
-        sock.send(str.encode("Server full, try again later"))
-        sock.close()
-        continue #skippar resten av loopen och börjar om från början
-
-    client_handlers.append(threading.Thread(kwargs={'sock':sock}, #passar sock som argument. kwargs=keyword arguments
+	sock, address = s.accept()
+	if len(client_handlers) > max_population:
+		sock.send(str.encode("Server full, try again later"))
+		sock.close()
+		continue #skippar resten av loopen och börjar om från början
+	print('connected to ' + address[0] + ':' + str(address[1]))
+	client_handlers.append(threading.Thread(kwargs={'sock':sock}, #passar sock som argument. kwargs=keyword arguments
                                             target=clientHandler, # när den startar kommer den att starta med clientHandler
                                             daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
-    client_handlers[len(client_handlers)-1].start()               # startar threaden
-    print('connected to ' + address[0] + ':' + str(address[1]))
+	client_handlers[len(client_handlers)-1].start()               # startar threaden

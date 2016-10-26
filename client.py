@@ -47,13 +47,14 @@ def recieve_messages(): #the function that recieves messages
 			if server_message=="root:-kick " + username:
 				raise ConnectionError
 		except ConnectionError as e: #this will happen when the user enters "quit" or when the server is shut down
+			print(e)
 			print("Disconnected from:", chat_server)
 			break
 	return
 
-s=socket
+#s=socket
 address_protocol="ipv4"
-chat_server="127.0.0.1"
+chat_server="localhost"
 port=5555
 username=""
 developer_mode=0
@@ -82,6 +83,7 @@ else:
 while True:
 #		address_protocol = input("IP protocol? (IPv4 or IPv6)\n>>>")
 		if address_protocol.lower() == "ipv4":
+			s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			break #IPv4 is a valid protocol
 		elif address_protocol.lower() == "ipv6":
 			s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM) #creates a socket object for IPv6
@@ -90,8 +92,8 @@ while True:
 			print("Invalid network protocol")
 
 #comment these away if you want to connect to 127.0.0.1:5555
-chat_server = input("IP address?\n>>>")
-port = int(input("Port?\n>>>")) #error will be raised if you enter a string, GUI will solve that
+#chat_server = input("IP address?\n>>>")
+#port = int(input("Port?\n>>>")) #error will be raised if you enter a string, GUI will solve that
 
 try:
 	s.connect((chat_server,port))
