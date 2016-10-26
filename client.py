@@ -2,6 +2,8 @@ import socket
 import os
 import threading
 
+#testar lite bara
+
 def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
