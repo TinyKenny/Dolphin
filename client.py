@@ -1,16 +1,15 @@
 import socket
 import os
 import threading
-
-#testar lite bara
+import configparser
 
 def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
-		if client_message[0:1] == "-": #lauches command intepreter
-			if client_message=="-quit":
+		if client_message[0:1] == "/": #lauches command intepreter
+			if client_message=="/quit":
 				break
-			elif client_message=="-help":
+			elif client_message=="/help":
 				for command, desc in command_dict.items():
 					print(command +"\t" +desc)
 				if developer_mode:
@@ -18,19 +17,19 @@ def send_messages(): #the function that sends messages
 					for command, desc in root_command_dict.items():
 						print(command + "\t" + desc)
 
-			elif client_message[0:5]=="-kick":
+			elif client_message[0:5]=="/kick":
 				s.send(str.encode(client_message))
 
-			elif client_message[0:11] == "-save prof ":
+			elif client_message[0:11] == "/save prof ":
 				print("command not implemented")
 
-			elif client_message[0:10] == "-del prof ":
+			elif client_message[0:10] == "/del prof ":
 				print("command not implemented")
 
-			elif client_message[0:11] == "-edit prof ":
+			elif client_message[0:11] == "/edit prof ":
 				print("command not implemented")
 
-			elif client_message[0:10] == "-view prof":
+			elif client_message[0:10] == "/view prof":
 				print("command not implemented")
 
 			else:
@@ -38,13 +37,15 @@ def send_messages(): #the function that sends messages
 		else:
 			s.send(str.encode(client_message))
 	s.close()
-	return
+	os._exit(0)
 
 def recieve_messages(): #the function that recieves messages
 	while True:
 		try:
 			message_data = s.recv(2048)
 			server_message = message_data.decode('utf-8')
+			if not server_message:
+				raise ConnectionError #meddelandet är tomt, linux har lite svårt att fatta när det är dags att gå hem annars
 			print (server_message)
 			if server_message=="root:-kick " + username:
 				raise ConnectionError
@@ -53,46 +54,55 @@ def recieve_messages(): #the function that recieves messages
 			break
 	return
 
-s=socket
 chat_server="127.0.0.1"
 port=5555
 username=""
 developer_mode=0
+config = configparser.ConfigParser()
+config.read("profiles.ini")
+network_protocol=""
 
-command_dict={"-help":"\t\t\tview this page",
-			  "-quit":"\t\t\texit program",
-			  "-save prof [name]":"save profile settings as [name]",
-			  "-del prof [name]":"delete profile [name]",
-			  "-view prof":"\t\tviews your saver profiles",
-			  "-edit prof [name]":"edit profile [name]"}
 
-root_command_dict={"terminate":"\t\tterminates the server",
-				   "-kick [username]":"kicks [username] from the server"}
+command_dict={"/help":"              view this page",
+			  "/quit":"              exit program",
+			  "/save prof [name]":"  save profile settings as [name]",
+			  "/del prof [name]":"  delete profile [name]",
+			  "/view prof":"          views your saver profiles",
+			  "/edit prof [name]":"  edit profile [name]"}
 
-if (input("Load profile or connect to an unsaved server?y/n")).lower() == 'y':
-	print("not implemented yet")
-	# Add code to import a profile  here
-	os._exit(0)  # since no profile is selected, it is useless to try to connect
-else:
+root_command_dict={"terminate":"        terminates the server",
+				   "-kick [username]":" kicks [username] from the server"}
+
+print("Select a proile to use or select manual:")
+print("* manual")
+for n in config.sections():
+	print("*", n)
+
+
+profile = input(">>>")
+if profile in config.sections():
+	network_protocol = str(config[profile]["network_protocol"])
+	if network_protocol=="IPv4":
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	else:
+		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+	port = int(config[profile]["port"])
+	chat_server = str(config[profile]["ip"])
+	username = str(config[profile]["username"])
+
+elif profile == "manual":
 	username = input("Enter your username:\n>>>")
 	if username == "root":  # enables client developer mode
 		developer_mode = True  # Boolean that keeps track of wether developer mode is active or not
 		print("You are now root user (admin)")
 		username = input("Username on server?\n")  # to make it possible to enable client dev mode without connecting as root
-
-while True:
-		address_protocol = input("IP protocol? (IPv4 or IPv6)\n>>>")
-		if address_protocol.lower() == "ipv4":
-			break #IPv4 is a valid protocol
-		elif address_protocol.lower() == "ipv6":
-			s=socket.socket(socket.AF_INET6, socket.SOCK_STREAM) #creates a socket object for IPv6
-			break #IPv6 is a valid protocol
-		else:
-			print("Invalid network protocol")
-
-#comment these away if you want to connect to 127.0.0.1:5555
-chat_server = input("IP address?\n>>>")
-port = int(input("Port?\n>>>")) #error will be raised if you enter a string, GUI will solve that
+	address_protocol = input("Enter IP protocol(IPv4 or IPv6):\n>>>")
+	if address_protocol.lower() == "ipv4":
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	elif address_protocol.lower() == "ipv6":
+		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+	chat_server=input("Enter server IP:\n>>>")
+	port = int(input("Enter port:\n>>>"))
 
 try:
 	s.connect((chat_server,port))
@@ -108,5 +118,3 @@ sender = threading.Thread(target=send_messages,daemon=0)
 reciever = threading.Thread(target=recieve_messages,daemon=0)
 sender.start()
 reciever.start()
-sender.join()
-reciever.join()
