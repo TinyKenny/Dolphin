@@ -118,7 +118,7 @@ if str.lower(profile) == "new":
 		profile = input("Profile name: ")
 	config[profile] = {}
 	network_protocol = input("Network protocol (IPv4/IPv6): ")
-	while str.lower(network_protocol) != ("ipv4" and "ipv6"):
+	while (str.lower(network_protocol) != "ipv4") and (str.lower(network_protocol) != "ipv6"):
 		print("Invalid protocol, it has to be IPv4 or IPv6!")
 		network_protocol = str(input("Network protocol (IPv4/IPv6): "))
 	config[profile]["network_protocol"] = network_protocol
