@@ -1,12 +1,13 @@
-import socket
+#import socket
 import random
 import threading
 import os
 import time
 import configparser
 import unicurses
+import socketserver
 from sys import platform
-
+"""
 class CommmonMessageHoster:
     common_message=""
 
@@ -173,3 +174,81 @@ while 1:
                                             daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
     client_handlers[len(client_handlers)-1].start()               # startar threaden
     print('connected to ' + address[0] + ':' + str(address[1]))
+"""
+#test-area starts here
+"""
+host="0.0.0.0"
+port=5555
+s=socketserver.TCPServer((host,port),False)
+
+class SomeHandler(socketserver.BaseRequestHandler):
+	def handle(self):
+		self.data=self.request.recv(2048).strip()
+		self.request.sendall(self.data.upper())
+"""
+
+class MyTCPHandler(socketserver.BaseRequestHandler):
+    """
+    The request handler class for our server.
+
+    It is instantiated once per connection to the server, and must
+    override the handle() method to implement communication to the
+    client.
+    """
+
+    def handle(self):
+        # self.request is the TCP socket connected to the client
+        self.data = self.request.recv(1024).strip()
+#        self.reply = ("{} wrote:".format(self.client_address[0])+"\n"+self.data)
+        print("{} wrote:".format(self.client_address[0]))
+        print(self.data)
+        # just send back the same data, but upper-cased
+        self.request.sendall(self.data)
+
+if __name__ == "__main__":
+    HOST, PORT = "localhost", 5555
+
+    # Create the server, binding to localhost on port 9999
+    server = socketserver.TCPServer((HOST, PORT), MyTCPHandler)
+
+    # Activate the server; this will keep running until you
+    # interrupt the program with Ctrl-C
+    server.serve_forever()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

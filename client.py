@@ -98,6 +98,7 @@ while True:
 try:
 	s.connect((chat_server,port))
 	print ("Connected to:",chat_server+":"+str(port))
+	s.send(str.encode("yay"))
 	data = s.recv(2048) #recieve the message of the day
 	print("Message of the day: " + str(data.decode('utf-8'))) #currently just a random quote
 	s.send(str.encode(username)) #inform the server of your username
