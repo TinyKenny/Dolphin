@@ -45,7 +45,7 @@ def listenToClient(conn, username):
 						s.close()
 						os._exit(0)
 					elif cmh.common_message=="root:/enumerate":
-						cmh.common_message=str(threading.enumerate())
+						conn.send(str.encode(str(threading.enumerate())))
 						cmh.common_message=""
 					elif cmh.common_message.startswith("root:/kick "):
 						conn.send(str.encode("Not implemented yet"))
