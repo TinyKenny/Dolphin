@@ -38,17 +38,26 @@ def listenToClient(conn, username):
 		try:
 			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
 			print(cmh.common_message)
+			if cmh.common_message.startswith(username+":/"):
+				if username=="root": #server admin commands
+					if cmh.common_message=="root:/terminate": #shuts down the server
+						print("Terminating server")
+						s.close()
+						os._exit(0)
+					elif cmh.common_message=="root:/enumerate":
+						cmh.common_message=str(threading.enumerate())
+						cmh.common_message=""
+					elif cmh.common_message.startswith("root:/kick "):
+						conn.send(str.encode("Not implemented yet"))
+						cmh.common_message=""
+				if cmh.common_message.startswith(username+":/help"):
+					conn.send(str.encode("Not implemented yet"))
+					cmh.common_message=""
+				elif cmh.common_message.startswith(username+":/me"):
+					cmh.common_message=username+cmh.common_message[len(username+":/me"):]
 			thread_manager.acquire() #hämtar managern
-			thread_manager.notify()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
-			if username=="root":
-				if cmh.common_message=="root:/terminate":
-					print("Terminating server")
-					s.close()
-					os._exit(0)
-				elif cmh.common_message=="root:/enumerate":
-					cmh.common_message=str(threading.enumerate())
-#				elif cmh.common_message.startswith("root:/kick "):
 		except ConnectionResetError:
 			cmh.common_message= str(username) + " disconnected"
 			break
@@ -59,7 +68,7 @@ def sendToClient(conn):
         thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
                               #automatiskt: thread_manager.release() #se rad 3 under
                               # när den har blivt notifierad så hämtar den managern
-        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
+#        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
                                 # detta sker även här för att notify ska sprida sig till alla
         thread_manager.release() #detta gör att manangern kan gå till andra trådar
         try:
@@ -145,7 +154,7 @@ else:
 	network_protocol= str(config[profile]["network_protocol"])
 	port = int(config[profile]["port"])
 	max_population= int(config[profile]["max_population"])
-host = ''
+host = '0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()

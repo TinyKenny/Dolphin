@@ -1,4 +1,4 @@
-#import socket
+import socket
 import random
 import threading
 import os
@@ -176,45 +176,28 @@ while 1:
     print('connected to ' + address[0] + ':' + str(address[1]))
 """
 #test-area starts here
-"""
+
 host="0.0.0.0"
 port=5555
-s=socketserver.TCPServer((host,port),False)
 
-class SomeHandler(socketserver.BaseRequestHandler):
+
+
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 	def handle(self):
-		self.data=self.request.recv(2048).strip()
-		self.request.sendall(self.data.upper())
-"""
-
-class MyTCPHandler(socketserver.BaseRequestHandler):
-    """
-    The request handler class for our server.
-
-    It is instantiated once per connection to the server, and must
-    override the handle() method to implement communication to the
-    client.
-    """
-
-    def handle(self):
-        # self.request is the TCP socket connected to the client
-        self.data = self.request.recv(1024).strip()
-#        self.reply = ("{} wrote:".format(self.client_address[0])+"\n"+self.data)
-        print("{} wrote:".format(self.client_address[0]))
-        print(self.data)
-        # just send back the same data, but upper-cased
-        self.request.sendall(self.data)
+		data = str(self.request.recv(1024), "ascii")
+		cur_thread=threading.current_thread()
+		response=bytes("{}:{}".format(cur_thread.name, data), "ascii")
+		self.request.sendall(response)
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+	pass
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 5555
-
-    # Create the server, binding to localhost on port 9999
-    server = socketserver.TCPServer((HOST, PORT), MyTCPHandler)
-
-    # Activate the server; this will keep running until you
-    # interrupt the program with Ctrl-C
-    server.serve_forever()
-
+	HOST, PORT = "localhost", 5555
+	server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
+	server_thread = threading.Thread(target=server.serve_forever)
+	server_thread.daemon = False
+	server_thread.start()
+	print("Server is in thread:", server_thread.name)
 
 
 

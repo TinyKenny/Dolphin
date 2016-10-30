@@ -92,13 +92,13 @@ while True:
 			print("Invalid network protocol")
 
 #comment these away if you want to connect to 127.0.0.1:5555
-#chat_server = input("IP address?\n>>>")
+chat_server = input("IP address?\n>>>")
 #port = int(input("Port?\n>>>")) #error will be raised if you enter a string, GUI will solve that
 
 try:
 	s.connect((chat_server,port))
 	print ("Connected to:",chat_server+":"+str(port))
-	s.send(str.encode("yay"))
+#	s.send(str.encode("yay"))
 	data = s.recv(2048) #recieve the message of the day
 	print("Message of the day: " + str(data.decode('utf-8'))) #currently just a random quote
 	s.send(str.encode(username)) #inform the server of your username
