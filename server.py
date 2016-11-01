@@ -29,14 +29,22 @@ def getRaddr(conn):
     return raddr
 
 def listenToClient(conn, username):
+	global taken_usernames
 	raddr=""
 	try:
 		raddr=getRaddr(conn)
 	except:
 		raddr = getRaddr(conn)
-	while 1:
+	while taken_usernames[username]:
 		try:
 			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+			if not taken_usernames[username]:
+				conn.send(str.encode("You were kicked out <3"))
+				cmh.common_message=str(username) + " was kicked"
+				thread_manager.acquire()
+				thread_manager.notify_all()
+				thread_manager.release()
+				break
 			print(cmh.common_message)
 			if cmh.common_message.startswith(username+":/"):
 				if username=="root": #server admin commands
@@ -44,12 +52,28 @@ def listenToClient(conn, username):
 						print("Terminating server")
 						s.close()
 						os._exit(0)
+					elif cmh.common_message=="root:/users":
+						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
+						for u in taken_usernames:
+							if taken_usernames[u]:
+								cmh.common_message=cmh.common_message+"\n"+u
 					elif cmh.common_message=="root:/enumerate":
-						conn.send(str.encode(str(threading.enumerate())))
+						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
+						for t in threading.enumerate():
+							conn.send(str.encode(str(t)+"\n"))
+						cmh.common_message=""
+					elif cmh.common_message=="root:/obj":
+						for o in list(globals().items()):
+							conn.send(str.encode(str(o)+"\n"))
 						cmh.common_message=""
 					elif cmh.common_message.startswith("root:/kick "):
-						conn.send(str.encode("Not implemented yet"))
-						cmh.common_message=""
+						if cmh.common_message[11:] in taken_usernames:
+							if taken_usernames[cmh.common_message[11:]]:
+								taken_usernames[cmh.common_message[11:]]=False
+							elif not taken_usernames[cmh.common_message[11:]]:
+								conn.send(str.encode("That user is not connected"))
+						elif cmh.common_message[11:] not in taken_usernames:
+							conn.send(str.encode("That user is not connected"))
 				if cmh.common_message.startswith(username+":/help"):
 					conn.send(str.encode("Not implemented yet"))
 					cmh.common_message=""
@@ -60,10 +84,13 @@ def listenToClient(conn, username):
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
 		except ConnectionResetError:
 			cmh.common_message= str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
 			break
 
-def sendToClient(conn):
-    while 1:
+def sendToClient(conn, listener):
+    while listener.is_alive():
         thread_manager.acquire() #hämtar managern
         thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
                               #automatiskt: thread_manager.release() #se rad 3 under
@@ -86,32 +113,39 @@ def clientHandler(sock):
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
 	username = (sock.recv(2048)).decode("utf-8")
 	raddr = getRaddr(sock)
-	if username not in taken_usernames:
-		taken_usernames.update([username])
-	elif username in taken_usernames:
-		sock.send(str.encode("that username is already taken"))
-		print("Disconnected from " + raddr)
-		sock.close()
-		return
+	
+	if username in taken_usernames:
+		if not taken_usernames[username]:
+			taken_usernames[username]=True
+		elif taken_usernames[username]:
+			sock.send(str.encode("That username is already taken."))
+			print("Disconnected from "+raddr)
+			sock.close()
+			return
+	elif username not in taken_usernames:
+		taken_usernames[username]=True
 	else:
 		print("shit got weird")
 		sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
 		print("Disconnected from " + raddr)
 		sock.close()
 		return
-	sender = threading.Thread(target=sendToClient,
-							  daemon=1,
-                              kwargs={'conn':sock},
-                              name="S" + raddr)
-	listner= threading.Thread(target=listenToClient,
+
+	listener= threading.Thread(target=listenToClient,
                               daemon=1,
                               kwargs={'conn':sock, 'username':username},
-                              name="L" + raddr)
+                              name="L" + username)
+	sender = threading.Thread(target=sendToClient,
+							  daemon=1,
+                              kwargs={'conn':sock, 'listener':listener},
+                              name="S" + username)
+	listener.start()
 	sender.start()
-	listner.start()
-
-	while listner.is_alive():
+	
+	while listener.is_alive():
 		time.sleep(0.1)
+	if taken_usernames[username]:
+		taken_usernames[username]=False
 	print("Disconnected from " + raddr)
 
 if platform == "win32":
@@ -161,7 +195,7 @@ cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
-taken_usernames=set()
+taken_usernames=dict()
 
 if str.lower(network_protocol)=="ipv6":
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
