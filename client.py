@@ -3,9 +3,13 @@ import os
 import threading
 import configparser
 
+def spacer(spaces, string): # denna fungerar inte heller vet inte varför, har ingen aning om vad som händer
+	return (spaces - len(string)) * " "
+
 def command_interpreter(client_message):
 	if client_message == "/quit":
 		s.close()
+		print("closing..")
 		return 1
 
 	elif client_message == "/help":
@@ -16,11 +20,7 @@ def command_interpreter(client_message):
 			for command, desc in root_command_dict.items():
 				print(command + "\t" + desc)
 
-	elif client_message[0:5] == "/kick":
-		s.send(str.encode(client_message))
-		pass
-
-	elif client_message[0:11] == "/prof save ":
+	elif client_message[0:6] == "/save ":
 		configEditor = configparser.RawConfigParser()
 
 		for profile in config.sections():#lägga till de gamla profilerna i den nya filen
@@ -33,7 +33,7 @@ def command_interpreter(client_message):
 				configEditor.set(profile, "developer_mode", "True")
 
 		#lägga till den nya profilen till filen
-		prof_name=client_message[11:]
+		prof_name=client_message[6:]
 		configEditor.add_section(prof_name)
 		configEditor.set(prof_name, "ip", chat_server)
 		configEditor.set(prof_name, "port", str(port))
@@ -41,20 +41,21 @@ def command_interpreter(client_message):
 		configEditor.set(prof_name, "username", username)
 		if developer_mode:
 			configEditor.set(prof_name, "developer_mode", "True")
-		print("Done!")
 
 		with open('profiles.ini', 'w') as new_configfile:
 			configEditor.write(new_configfile)
+			config.read("profiles.ini")
+			print("Done!")
 
-	elif client_message[0:10] == "/prof del ":
-		if not (client_message[11:] in config.sections()):
-			print("No such profile:"+client_message[11:])
+	elif client_message[0:5] == "/del ":
+		if not (client_message[5:] in config.sections()):
+			print("No such profile:"+client_message[5:])
 			return 0
 
 		configEditor = configparser.RawConfigParser()
 
 		for profile in config.sections():#lägga till de gamla profilerna i den nya filen
-			if profile==client_message[10:]:
+			if profile==client_message[5:]:
 				continue
 			configEditor.add_section(profile)
 			configEditor.set(profile, "ip", config[profile]["ip"])
@@ -64,47 +65,95 @@ def command_interpreter(client_message):
 			if developer_mode:
 				configEditor.set(profile, "developer_mode", "True")
 
-			with open('profiles.ini', 'w') as new_configfile:
-				configEditor.write(new_configfile)
+		with open('profiles.ini', 'w') as new_configfile:
+			configEditor.write(new_configfile)
+			config.read("profiles.ini") #detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
+			print("Done!")
 
-	elif client_message[0:11] == "/prof edit ":
+	elif client_message[0:11] == "/edit -all ":
 		if not (client_message[11:] in config.sections()):
-			print("No such profile:"+client_message[11:])
+			print("No such profile:"+client_message[16:])
 			return 0
 
 		configEditor = configparser.RawConfigParser()
 
-		for profile in config.sections():  # lägga till de gamla profilerna i den nya filen
+		for profile in config.sections():  # lägga till profilerna i den nya filen
 			if profile == client_message[11:]: #den som ska ändas har hittats
 				print("Current name:"+profile)
 				new_profile_name = input("Enter new name:\n>>>")
 				configEditor.add_section(new_profile_name)
-				print("Current IP:"+chat_server)
+				print("Current IP:"+config[profile]["ip"])
 				configEditor.set(new_profile_name, "ip", input("Enter new IP addres:\n>>>"))
-				print("Current port:" + str(port))
+				print("Current port:" + str(config[profile]["port"]))
 				configEditor.set(new_profile_name, "port", input("Enter new port:\n>>>"))
-				print("Current network protocol:" + network_protocol)
+				print("Current network protocol:" + config[profile]["network_protocol"])
 				configEditor.set(new_profile_name, "network_protocol", input("Enter new network protocol:\n>>>"))
-				print("Current username:" + username)
+				print("Current username:" + config[profile]["username"])
 				configEditor.set(new_profile_name, "username", input("Enter new username:\n>>>"))
 				if developer_mode:
 					if not input("Enter new dev mode status(True/False)\n>>>") == "False":
 						configEditor.set(new_profile_name, "developer_mode", True)
-				continue
+			else: #detta var inte profilen som skulle ändras, lägger till den som den är i den nya filen
+				configEditor.add_section(profile)
+				configEditor.set(profile, "ip", config[profile]["ip"])
+				configEditor.set(profile, "port", config[profile]["port"])
+				configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
+				configEditor.set(profile, "username", config[profile]["username"])
+				try:
+					if config[profile]["developer_mode"]:
+						configEditor.set(profile, "developer_mode", "True")
+				except KeyError as e:
+					pass #profilen var ej developer, inget ska hända
 
-			configEditor.add_section(profile)
-			configEditor.set(profile, "ip", config[profile]["ip"])
-			configEditor.set(profile, "port", config[profile]["port"])
-			configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
-			configEditor.set(profile, "username", config[profile]["username"])
-			if developer_mode:
-				configEditor.set(profile, "developer_mode", "True")
+		with open('profiles.ini', 'w') as new_configfile:
+			configEditor.write(new_configfile)
+			config.read("profiles.ini") #detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
 
-			with open('profiles.ini', 'w') as new_configfile:
-				print("added ", configEditor.sections())
-				configEditor.write(new_configfile)
+	elif client_message[0:6] == "/edit ":
+		if not (client_message[6:] in config.sections()):
+			print("No such profile:"+client_message[6:])
+			return 0
 
-	elif client_message[0:10] == "/prof view":
+		configEditor = configparser.RawConfigParser()
+
+		for profile in config.sections():  # lägga till profilerna i den nya filen
+			if profile == client_message[6:]: #den som ska ändas har hittats
+				print("Current name:"+profile)
+				new_profile_name = input("Enter new profile name:\n>>>")
+				configEditor.add_section(new_profile_name)
+				print("Current IP:"+config[profile]["ip"])
+				configEditor.set(new_profile_name, "ip", input("Enter new IP addres:\n>>>"))
+				configEditor.set(new_profile_name, "port", config[profile]["port"]) #sker auto
+				configEditor.set(new_profile_name, "network_protocol", config[profile]["network_protocol"])#sker auto
+				print("Current username:" + config[profile]["username"])
+				configEditor.set(new_profile_name, "username", input("Enter new username:\n>>>"))
+				try:
+					if config[profile]["developer_mode"]:
+						configEditor.set(new_profile_name, "developer_mode", "True")
+				except KeyError as e:
+					pass #profilen var ej developer, inget ska hända
+			else:
+				configEditor.add_section(profile)
+				configEditor.set(profile, "ip", config[profile]["ip"])
+				configEditor.set(profile, "port", config[profile]["port"])
+				configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
+				configEditor.set(profile, "username", config[profile]["username"])
+				try:
+					if config[profile]["developer_mode"]:
+						configEditor.set(profile, "developer_mode", "True")
+				except KeyError as e:
+					pass #profilen var ej developer, inget ska hända
+
+		with open('profiles.ini', 'w') as new_configfile:
+			configEditor.write(new_configfile)
+			config.read("profiles.ini") #detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
+
+	elif client_message == "/view -all":
+		print("Profile name" + spacer(15, "Profile name") +
+			  "IP addres" + spacer(13, "IP addres") +
+			  "Port" + spacer(8, "port") +
+			  "Network Protocol  " +
+			  "Username")
 		for profile in config.sections():
 			print(profile +
 				  (15 - len(profile)) * " " +
@@ -113,19 +162,31 @@ def command_interpreter(client_message):
 				  config[profile]["port"] +
 				  (8 - len(config[profile]["port"])) * " " +
 				  config[profile]["network_protocol"] +
-				  (8 - len(config[profile]["network_protocol"])) * " " +
+				  (18 - len(config[profile]["network_protocol"])) * " " +
 				  config[profile]["username"])
 
+	elif client_message == "/view":
+		print("Profile name" + spacer(15, "Profile name") +
+			  "IP addres" + spacer(13, "IP addres") +
+			  "Username")
+		for profile in config.sections():
+			print(profile +
+				  (15 - len(profile)) * " " +
+				  config[profile]["ip"] +
+				  (13 - len(config[profile]["ip"])) * " " +
+				  config[profile]["username"])
 
 	else:
-		print("Unknown command:" + client_message)
+		s.send(str.encode(client_message)) #kommandot hittades inte utan skickas till servern
+		pass # så att man enkelt ska kunna "döja" hela denna kod del i pycharm
 
 def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
 		if client_message[0:1] == "/": #lauches command intepreter
-			if command_interpreter(client_message):
-				break
+			if command_interpreter(client_message ):
+				s.close()
+				os._exit(0)
 		else:
 			s.send(str.encode(client_message))
 
@@ -137,9 +198,9 @@ def recieve_messages(): #the function that recieves messages
 			if not server_message:
 				raise ConnectionError #meddelandet är tomt, linux har lite svårt att fatta när det är dags att gå hem annars
 			print (server_message)
-			if server_message=="root:-kick " + username:
+			if server_message=="root:/kick " + username:
 				raise ConnectionError
-	except ConnectionError as e: #this will happen when the user enters "quit" or when the server is shut down
+	except ConnectionError as e: #this will happen when the server is shut down
 		print("Disconnected from:", chat_server)
 
 chat_server="127.0.0.1"
@@ -150,12 +211,14 @@ config = configparser.ConfigParser()
 config.read("profiles.ini")
 network_protocol="null"
 
-command_dict={"/help":"view this page",
-			  "/quit":"              exit program",
-			  "/prof save [name]":"  save profile settings as [name]",
-			  "/prof del [name]":"  delete profile [name]",
-			  "/prof view":"          views your saver profiles",
-			  "/prof edit [name]":"  edit profile [name]"}
+command_dict={"/help":spacer(20, "/help") + "view this page",
+			  "/quit":spacer(20, "/quit") + "exit program",
+			  "/save [name]":spacer(20, "/save [name]") + "save profile settings as [name]",
+			  "/del [name]":spacer(20, "/del [name]") + "delete profile [name]",
+			  "/view":spacer(20, "/view") + "views your saved profiles",
+			  "/edit [name]":spacer(20, "/edit [name]") + "edit profile [name]",
+			  "/edit -all [name]":spacer(20, "/edit -all [name]") + "edit all avalible information about profile [name]",
+			  "/view -all":spacer(20, "/view -all") + "views all inofmation avalible about you profiles"}
 
 root_command_dict={"terminate":"        terminates the server",
 				   "/kick [username]":" kicks [username] from the server"}
@@ -170,9 +233,18 @@ if profile in config.sections():
 	network_protocol = str(config[profile]["network_protocol"])
 	if network_protocol=="IPv4":
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	else:
+	elif network_protocol=="IPv6":
 		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-	port = int(config[profile]["port"])
+	else:
+		print("Corrupt profile")
+		os._exit(1)
+
+	try:
+		port = int(config[profile]["port"])
+	except ValueError:
+		print("Corrupt profile")
+		os._exit(1)
+
 	chat_server = str(config[profile]["ip"])
 	username = str(config[profile]["username"])
 	developer_mode= config.getboolean(profile, "developer_mode", fallback=False)
