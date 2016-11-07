@@ -1,0 +1,7 @@
+21:34 2016-11-07 Lukas
+jag lyckades få det att fungera online nu, efter lite trix och fix så tror jag att det fungerar.
+vi bytte server variabeln host till 0.0.0.0 istället för tomt och då fungerade det.
+dock så märkte jag när jag dubbbel kollade port forwarding att det inte fanns någon sak för chatt servern,
+kanske så har det varit så hela tiden och jag bara failade med att fixa portforwarding för jag kommer inte
+ihåg att jag tog bort chatt saken därfifrån, men det kanske jag gjorde. Nu ska jag sätta upp min paj på 
+att vara 24/7 server! hoppas jag inte blir hackad på port 5555...
