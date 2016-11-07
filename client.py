@@ -2,6 +2,7 @@ import socket
 import os
 import threading
 import configparser
+import time
 
 def spacer(spaces, string):
 	return (spaces - len(string)) * " "
@@ -15,11 +16,6 @@ def command_interpreter(client_message):
 		for command, desc in command_dict.items():
 			print(command + desc)
 		s.send(str.encode(client_message))
-		print(s.recv(2048).decode("utf-8"))
-		if developer_mode:
-			print("ROOT COMMANDS:")
-			for command, desc in root_command_dict.items():
-				print(command + desc)
 
 	elif client_message[0:6] == "/save ":
 		configEditor = configparser.RawConfigParser()
@@ -183,6 +179,7 @@ def command_interpreter(client_message):
 
 def send_messages(): #the function that sends messages
 	while True:
+		time.sleep(0.1) #partially prevents a server message to end on the same line as ">>>"
 		client_message = input(">>>")
 		if client_message[0:1] == "/":
 			if command_interpreter(client_message): #lauches command intepreter
@@ -201,13 +198,14 @@ def recieve_messages(): #the function that recieves messages
 	except ConnectionError as e: #this will happen when the server is shut down
 		print("Disconnected from:", chat_server)
 
-chat_server="127.0.0.1"
+chat_server=""
 port=5555
 username=""
 developer_mode=0
 config = configparser.ConfigParser()
 config.read("profiles.ini")
 network_protocol=""
+
 
 command_dict={"/help":spacer(20, "/help") + "view this page",
 			  "/quit":spacer(20, "/quit") + "exit program",
@@ -217,9 +215,6 @@ command_dict={"/help":spacer(20, "/help") + "view this page",
 			  "/edit [name]":spacer(20, "/edit [name]") + "edit profile [name]",
 			  "/edit -all [name]":spacer(20, "/edit -all [name]") + "edit all avalible information about profile [name]",
 			  "/view -all":spacer(20, "/view -all") + "views all inofmation avalible about you profiles"}
-
-root_command_dict={"/terminate":spacer(20, "/terminate") + "terminates the server",
-				   "/kick [username]":spacer(20, "/kick [username]") + "kicks [username] from the server"}
 
 print("Select a proile to use or select manual:")
 print("* manual")
@@ -246,7 +241,6 @@ if profile in config.sections():
 	chat_server = config.get(profile, "ip")
 	username = config.get(profile, "username")
 	developer_mode= config.getboolean(profile, "developer_mode", fallback=False)
-
 elif profile == "manual":
 	username = input("Enter your username:\n>>>")
 	if username == "root":  # enables client developer mode
@@ -262,6 +256,28 @@ elif profile == "manual":
 		network_protocol = "IPv6"
 	chat_server=input("Enter server IP:\n>>>")
 	port = int(input("Enter port:\n>>>"))
+else: #profilen fannns inte
+	print("No such porfile:" + profile +  "\n" +
+		  "fine, fine, lemme just select \"default\" 4 u u lazy cunt")
+	profile = "default"
+	network_protocol = str(config[profile]["network_protocol"])
+	if network_protocol == "IPv4":
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	elif network_protocol == "IPv6":
+		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+	else:
+		print("Corrupt profile")
+		os._exit(1)
+
+	try:
+		port = config.getint(profile, "port")
+	except ValueError:
+		print("Corrupt profile")
+		os._exit(1)
+
+	chat_server = config.get(profile, "ip")
+	username = config.get(profile, "username")
+	developer_mode = config.getboolean(profile, "developer_mode", fallback=False)
 
 try:
 	s.connect((chat_server,port))
