@@ -3,22 +3,23 @@ import os
 import threading
 import configparser
 
-def spacer(spaces, string): # denna fungerar inte heller vet inte varför, har ingen aning om vad som händer
+def spacer(spaces, string):
 	return (spaces - len(string)) * " "
 
 def command_interpreter(client_message):
 	if client_message == "/quit":
-		s.close()
-		print("closing..")
+		print("Closing...")
 		return 1
 
 	elif client_message == "/help":
 		for command, desc in command_dict.items():
-			print(command + "\t" + desc)
+			print(command + desc)
+		s.send(str.encode(client_message))
+		print(s.recv(2048).decode("utf-8"))
 		if developer_mode:
 			print("ROOT COMMANDS:")
 			for command, desc in root_command_dict.items():
-				print(command + "\t" + desc)
+				print(command + desc)
 
 	elif client_message[0:6] == "/save ":
 		configEditor = configparser.RawConfigParser()
@@ -183,23 +184,20 @@ def command_interpreter(client_message):
 def send_messages(): #the function that sends messages
 	while True:
 		client_message = input(">>>")
-		if client_message[0:1] == "/": #lauches command intepreter
-			if command_interpreter(client_message ):
+		if client_message[0:1] == "/":
+			if command_interpreter(client_message): #lauches command intepreter
 				s.close()
 				os._exit(0)
 		else:
-			s.send(str.encode(client_message))
+			s.send(str.encode(client_message)) #was not a command
 
 def recieve_messages(): #the function that recieves messages
 	try:
 		while True:
-			message_data = s.recv(2048)
-			server_message = message_data.decode('utf-8')
+			server_message = s.recv(2048).decode('utf-8')
 			if not server_message:
 				raise ConnectionError #meddelandet är tomt, linux har lite svårt att fatta när det är dags att gå hem annars
 			print (server_message)
-			if server_message=="root:/kick " + username:
-				raise ConnectionError
 	except ConnectionError as e: #this will happen when the server is shut down
 		print("Disconnected from:", chat_server)
 
@@ -209,7 +207,7 @@ username=""
 developer_mode=0
 config = configparser.ConfigParser()
 config.read("profiles.ini")
-network_protocol="null"
+network_protocol=""
 
 command_dict={"/help":spacer(20, "/help") + "view this page",
 			  "/quit":spacer(20, "/quit") + "exit program",
@@ -220,8 +218,8 @@ command_dict={"/help":spacer(20, "/help") + "view this page",
 			  "/edit -all [name]":spacer(20, "/edit -all [name]") + "edit all avalible information about profile [name]",
 			  "/view -all":spacer(20, "/view -all") + "views all inofmation avalible about you profiles"}
 
-root_command_dict={"terminate":"        terminates the server",
-				   "/kick [username]":" kicks [username] from the server"}
+root_command_dict={"/terminate":spacer(20, "/terminate") + "terminates the server",
+				   "/kick [username]":spacer(20, "/kick [username]") + "kicks [username] from the server"}
 
 print("Select a proile to use or select manual:")
 print("* manual")
@@ -240,13 +238,13 @@ if profile in config.sections():
 		os._exit(1)
 
 	try:
-		port = int(config[profile]["port"])
+		port = config.getint(profile, "port")
 	except ValueError:
 		print("Corrupt profile")
 		os._exit(1)
 
-	chat_server = str(config[profile]["ip"])
-	username = str(config[profile]["username"])
+	chat_server = config.get(profile, "ip")
+	username = config.get(profile, "username")
 	developer_mode= config.getboolean(profile, "developer_mode", fallback=False)
 
 elif profile == "manual":
@@ -275,7 +273,7 @@ except socket.error as e: #couldn't connect to given IP + port
 	print("Cound not connect to",chat_server+":"+str(port) + "\n" + str(e))
 	os._exit(1)
 
-sender = threading.Thread(target=send_messages,daemon=0)
-reciever = threading.Thread(target=recieve_messages,daemon=0)
+sender = threading.Thread(target=send_messages, daemon=0)
+reciever = threading.Thread(target=recieve_messages, daemon=0)
 sender.start()
 reciever.start()
