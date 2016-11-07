@@ -29,44 +29,89 @@ def getRaddr(conn):
     return raddr
 
 def listenToClient(conn, username):
+	global taken_usernames, help, root_help
 	raddr=""
 	try:
 		raddr=getRaddr(conn)
 	except:
 		raddr = getRaddr(conn)
-	while 1:
+	cmh.common_message = username + " connected"
+	thread_manager.acquire()
+	thread_manager.notify_all()
+	thread_manager.release()
+	while True:
 		try:
 			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
 			print(cmh.common_message)
+			if cmh.common_message.startswith(username+":/"): #commands
+				if username=="root":
+					if cmh.common_message=="root:/terminate":
+						print("Terminating server")
+						s.close()
+						os._exit(0)
+					elif cmh.common_message=="root:/users":
+						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
+						for u in taken_usernames:
+							cmh.common_message=cmh.common_message+"\n"+u
+					elif cmh.common_message=="root:/enumerate":
+						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
+						for t in threading.enumerate():
+							conn.send(str.encode(str(t)+"\n"))
+						cmh.common_message=""
+					elif cmh.common_message.startswith("root:/kick "):
+#						if cmh.common_message[11:] in taken_usernames:
+#							if taken_usernames[cmh.common_message[11:]]:
+#								taken_usernames[cmh.common_message[11:]]=False
+#							elif not taken_usernames[cmh.common_message[11:]]:
+#								conn.send(str.encode("That user is not connected"))
+						if cmh.common_message[11:] not in taken_usernames:
+							conn.send(str.encode("That user is not connected"))
+				if cmh.common_message.startswith(username+":/help"):
+					if username == "root":
+						conn.send(str.encode(help+root_help))
+					else:
+						conn.send(str.encode(help))
+					cmh.common_message=""
+				elif cmh.common_message.startswith(username+":/me"):
+					cmh.common_message=username+cmh.common_message[len(username+":/me"):]
 			thread_manager.acquire() #hämtar managern
-			thread_manager.notify()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
-			if username=="root":
-				if cmh.common_message=="root:/terminate":
-					print("Terminating server")
-					s.close()
-					os._exit(0)
-				elif cmh.common_message=="root:/enumerate":
-					cmh.common_message=str(threading.enumerate())
-#				elif cmh.common_message.startswith("root:/kick "):
 		except ConnectionResetError:
 			cmh.common_message= str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
+		except ConnectionAbortedError:
+			cmh.common_message= str(username) + " was kicked"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
 			break
 
-def sendToClient(conn):
-    while 1:
-        thread_manager.acquire() #hämtar managern
-        thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
-                              #automatiskt: thread_manager.release() #se rad 3 under
-                              # när den har blivt notifierad så hämtar den managern
-        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
-                                # detta sker även här för att notify ska sprida sig till alla
-        thread_manager.release() #detta gör att manangern kan gå till andra trådar
-        try:
-            conn.sendall(str.encode(cmh.common_message))
-            time.sleep(0.01) #för att hindra den från att notifiera sig själv
-        except ConnectionResetError:
-            pass
+def sendToClient(conn, listener, username):
+	global taken_usernames
+	while listener.is_alive():
+		thread_manager.acquire() #hämtar managern
+		thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
+							  #automatiskt: thread_manager.release() #se rad 3 under
+							  # när den har blivt notifierad så hämtar den managern
+#        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
+							  # detta sker även här för att notify ska sprida sig till alla
+		thread_manager.release() #detta gör att manangern kan gå till andra trådar
+		if cmh.common_message == ("root:/kick "+username):
+			conn.send(str.encode("You were kicked out <3"))
+#			taken_usernames[username]=False
+			taken_usernames.remove(username)
+			conn.close()
+			break
+		else:
+			try:
+				conn.sendall(str.encode(cmh.common_message))
+				time.sleep(0.01) #för att hindra den från att notifiera sig själv
+			except ConnectionResetError:
+				pass
 
 def clientHandler(sock):
 	global taken_usernames
@@ -77,32 +122,36 @@ def clientHandler(sock):
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
 	username = (sock.recv(2048)).decode("utf-8")
 	raddr = getRaddr(sock)
-	if username not in taken_usernames:
-		taken_usernames.update([username])
-	elif username in taken_usernames:
-		sock.send(str.encode("that username is already taken"))
-		print("Disconnected from " + raddr)
+	
+	if username in taken_usernames:
+		sock.send(str.encode("That username is already taken."))
+		print("Disconnected from "+raddr)
 		sock.close()
 		return
+	elif username not in taken_usernames:
+		taken_usernames.update([username])
 	else:
 		print("shit got weird")
 		sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
 		print("Disconnected from " + raddr)
 		sock.close()
 		return
-	sender = threading.Thread(target=sendToClient,
-							  daemon=1,
-                              kwargs={'conn':sock},
-                              name="S" + raddr)
-	listner= threading.Thread(target=listenToClient,
+
+	listener= threading.Thread(target=listenToClient,
                               daemon=1,
                               kwargs={'conn':sock, 'username':username},
-                              name="L" + raddr)
+                              name="L-" + username)
+	sender = threading.Thread(target=sendToClient,
+							  daemon=1,
+                              kwargs={'conn':sock, 'listener':listener, 'username':username},
+                              name="S-" + username)
+	listener.start()
 	sender.start()
-	listner.start()
-
-	while listner.is_alive():
+	
+	while listener.is_alive():
 		time.sleep(0.1)
+	if username in taken_usernames:
+		taken_usernames.remove(username)
 	print("Disconnected from " + raddr)
 
 if platform == "win32":
@@ -145,7 +194,7 @@ else:
 	network_protocol= str(config[profile]["network_protocol"])
 	port = int(config[profile]["port"])
 	max_population= int(config[profile]["max_population"])
-host = ''
+host = '0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()
@@ -153,9 +202,22 @@ lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
 taken_usernames=set()
+help=""
+root_help="ROOT COMMANDS:"
+command_dict={"/help":"View this message.",
+			  "/me":"Works like the irc command"}
+root_command_dict={"/users":"Returns a list of all connected users",
+				   "/kick [username]":"Kicks the specified user.",
+				   "/terminate":"Terminates the server",
+				   "/enumerate":"Returns a list of all live threads"}
+
+for command in command_dict:
+	help+=command+" "*(20-len(command))+command_dict[command]+"\n"
+for command in root_command_dict:
+	root_help+="\n"+command+" "*(20-len(command))+root_command_dict[command]
 
 if str.lower(network_protocol)=="ipv6":
-    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+	s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 elif str.lower(network_protocol)=="ipv4":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 else:
