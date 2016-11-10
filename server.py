@@ -49,10 +49,13 @@ def listenToClient(conn, username):
 						print("Terminating server")
 						s.close()
 						os._exit(0)
-					elif cmh.common_message=="root:/users":
+					elif cmh.common_message=="root:/users -show":
 						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
 						for u in taken_usernames:
 							cmh.common_message=cmh.common_message+"\n"+u
+					elif cmh.common_message=="root:/users":
+						conn.send(str.encode(taken_usernames))
+						cmh.common_message=""	
 					elif cmh.common_message=="root:/enumerate":
 						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
 						for t in threading.enumerate():
@@ -101,8 +104,10 @@ def sendToClient(conn, listener, username):
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
 		if cmh.common_message == ("root:/kick "+username):
-			conn.send(str.encode("You were kicked out <3"))
-#			taken_usernames[username]=False
+			if radnom.randint(0,100) < 2
+				conn.send(str.encode("Wait, what?"))
+			else:
+				conn.send(str.encode("You were kicked out <3"))
 			taken_usernames.remove(username)
 			conn.close()
 			break
@@ -230,7 +235,7 @@ except socket.error as e:
     print("Failed to bind\n", e)
     os._exit(1)
 
-s.listen()
+s.listen(5)
 print("Using "+network_protocol)
 print("Max population:",max_population)
 print("Listening @ ",serverIP + ":" + str(port))
