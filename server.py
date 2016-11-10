@@ -54,7 +54,7 @@ def listenToClient(conn, username):
 						for u in taken_usernames:
 							cmh.common_message=cmh.common_message+"\n"+u
 					elif cmh.common_message=="root:/users":
-						conn.send(str.encode(taken_usernames))
+						conn.send(str.encode(str(taken_usernames)))
 						cmh.common_message=""	
 					elif cmh.common_message=="root:/enumerate":
 						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
@@ -62,11 +62,6 @@ def listenToClient(conn, username):
 							conn.send(str.encode(str(t)+"\n"))
 						cmh.common_message=""
 					elif cmh.common_message.startswith("root:/kick "):
-#						if cmh.common_message[11:] in taken_usernames:
-#							if taken_usernames[cmh.common_message[11:]]:
-#								taken_usernames[cmh.common_message[11:]]=False
-#							elif not taken_usernames[cmh.common_message[11:]]:
-#								conn.send(str.encode("That user is not connected"))
 						if cmh.common_message[11:] not in taken_usernames:
 							conn.send(str.encode("That user is not connected"))
 				if cmh.common_message.startswith(username+":/help"):
@@ -104,7 +99,7 @@ def sendToClient(conn, listener, username):
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
 		if cmh.common_message == ("root:/kick "+username):
-			if radnom.randint(0,100) < 2
+			if radnom.randint(0,100) < 2:
 				conn.send(str.encode("Wait, what?"))
 			else:
 				conn.send(str.encode("You were kicked out <3"))

@@ -4,13 +4,13 @@ import threading
 import os
 import time
 import configparser
-import unicurses
+from unicurses import *
 from sys import platform
 
 
 class CommmonMessageHoster:
     common_message=""
-
+"""
 def getRaddr(conn):
     raw = str(conn)
     raddr = ""
@@ -155,13 +155,89 @@ def clientHandler(sock):
 	if username in taken_usernames:
 		taken_usernames.remove(username)
 	print("Disconnected from " + raddr)
+"""
+#--------------------------------------------------------------------------------------------------
+def print_menu(prof_select_win, highlight):
+	x = 2
+	y = 2
+	box(prof_select_win, 0, 0)
+	for i in range(0, n_choices):
+		if (highlight == i + 1):
+			wattron(prof_select_win, A_REVERSE)
+			mvwaddstr(prof_select_win, y, x, choices[i])
+			wattroff(prof_select_win, A_REVERSE)
+		else:
+			mvwaddstr(prof_select_win, y, x, choices[i])
+		y += 1
+	wrefresh(prof_select_win)
 
 if platform == "win32":
-	os.system("mode con: cols=90 lines=30")
+	os.system("mode con: cols=90 lines=30")	
+
+WIDTH = 30
+HEIGHT = 10
 config = configparser.ConfigParser()
 config.read("config_server.ini")
-print ('Enter "new" to create a new configuration profile, or select a pre-existing profile:\n'+str(config.sections()))
-profile = input(">>>")
+choices = config.sections()
+choices.append("New")
+n_choices = len(choices)
+highlight = 1
+profile = 0
+c = 0
+
+stdscr = initscr()
+clear()
+noecho()
+cbreak()
+curs_set(0)
+startx = int((90 - WIDTH) / 2)
+starty = int((30 - HEIGHT) / 2)
+
+prof_select_win = newwin(HEIGHT, WIDTH, starty, startx)
+keypad(prof_select_win, True)
+mvaddstr(0, 0, "Select a pre-existing configuration profile, or create a new profile")
+mvaddstr(1, 0, "Use arrow keys navigate, press enter to select")
+refresh()
+print_menu(prof_select_win, highlight)
+
+while True:
+	c = wgetch(prof_select_win)
+	if c == KEY_UP:
+		if highlight == 1:
+			highlight == n_choices
+		else:
+			highlight -= 1
+	elif c == KEY_DOWN:
+		if highlight == n_choices:
+			highlight = 1
+		else:
+			highlight += 1
+	elif c == 10:   # ENTER is pressed
+		profile = choices[highlight-1]
+		break
+		mvaddstr(29,0,str("you selected: "+profile))
+		clrtoeol()
+		refresh()
+	else:
+		mvaddstr(29, 0, str.format("Character pressed is = {0}", c))
+		clrtoeol()
+		refresh()
+	print_menu(prof_select_win, highlight)
+delwin(prof_select_win)
+refresh()
+echo()
+if profile == "New":
+	new_prof_win=newwin(20,60,int((90-60)/2),int((30-20)/2))
+#	profile=wgetstr()
+	
+
+getch()
+refresh()
+endwin()
+#--------------------------------------------------------------------------------------------------
+
+
+"""
 if str.lower(profile) == "new":
 	profile = input("Profile name: ")
 	while profile in config.sections():
@@ -253,3 +329,4 @@ while 1:
                                             target=clientHandler, # när den startar kommer den att starta med clientHandler
                                             daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
 	client_handlers[len(client_handlers)-1].start()               # startar threaden
+"""
