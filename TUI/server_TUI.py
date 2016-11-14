@@ -4,11 +4,13 @@ import threading
 import os
 import time
 import configparser
+from unicurses import *
 from sys import platform
+
 
 class CommmonMessageHoster:
     common_message=""
-
+"""
 def getRaddr(conn):
     raw = str(conn)
     raddr = ""
@@ -24,7 +26,7 @@ def getRaddr(conn):
             raddr= raddr[1:-1]
             raddr=raddr.replace("'", "")
     except:
-        print("[Error] Cannot identify raddr")
+        waddstr(logwin,"[Error] Cannot identify raddr")
         raddr="[Error] Cannot identify raddr"
     return raddr
 
@@ -49,19 +51,21 @@ def listenToClient(conn, username):
 						print("Terminating server")
 						s.close()
 						os._exit(0)
-					elif cmh.common_message=="root:/users -show":
+					elif cmh.common_message=="root:/users":
 						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
 						for u in taken_usernames:
 							cmh.common_message=cmh.common_message+"\n"+u
-					elif cmh.common_message=="root:/users":
-						conn.send(str.encode(str(taken_usernames)))
-						cmh.common_message=""	
 					elif cmh.common_message=="root:/enumerate":
 						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
 						for t in threading.enumerate():
 							conn.send(str.encode(str(t)+"\n"))
 						cmh.common_message=""
 					elif cmh.common_message.startswith("root:/kick "):
+#						if cmh.common_message[11:] in taken_usernames:
+#							if taken_usernames[cmh.common_message[11:]]:
+#								taken_usernames[cmh.common_message[11:]]=False
+#							elif not taken_usernames[cmh.common_message[11:]]:
+#								conn.send(str.encode("That user is not connected"))
 						if cmh.common_message[11:] not in taken_usernames:
 							conn.send(str.encode("That user is not connected"))
 				if cmh.common_message.startswith(username+":/help"):
@@ -76,12 +80,6 @@ def listenToClient(conn, username):
 			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
 		except ConnectionResetError:
-			cmh.common_message = str(username) + " disconnected"
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-		except BrokenPipeError:
 			cmh.common_message= str(username) + " disconnected"
 			thread_manager.acquire()
 			thread_manager.notify_all()
@@ -105,10 +103,8 @@ def sendToClient(conn, listener, username):
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
 		if cmh.common_message == ("root:/kick "+username):
-			if radnom.randint(0,100) < 2:
-				conn.send(str.encode("Wait, what?"))
-			else:
-				conn.send(str.encode("You were kicked out <3"))
+			conn.send(str.encode("You were kicked out <3"))
+#			taken_usernames[username]=False
 			taken_usernames.remove(username)
 			conn.close()
 			break
@@ -159,54 +155,167 @@ def clientHandler(sock):
 	if username in taken_usernames:
 		taken_usernames.remove(username)
 	print("Disconnected from " + raddr)
+"""
+#--------------------------------------------------------------------------------------------------
+def print_menu(prof_select_win, highlight):
+	x = 2
+	y = 2
+	box(prof_select_win, 0, 0)
+	for i in range(0, n_choices):
+		if (highlight == i + 1):
+			wattron(prof_select_win, A_REVERSE)
+			mvwaddstr(prof_select_win, y, x, choices[i])
+			wattroff(prof_select_win, A_REVERSE)
+		else:
+			mvwaddstr(prof_select_win, y, x, choices[i])
+		y += 1
+	wrefresh(prof_select_win)
+
+def destroy_win(local_win):
+	wborder(local_win, CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '))
+	wclear(local_win)
+	wrefresh(local_win)
+	delwin(local_win)
+
 
 if platform == "win32":
-	os.system("mode con: cols=90 lines=30")
+	os.system("mode con: cols=90 lines=30")	
+
+WIDTH = 30
+HEIGHT = 10
 config = configparser.ConfigParser()
 config.read("config_server.ini")
-print ('Enter "new" to create a new configuration profile, or select a pre-existing profile:\n'+str(config.sections()))
-profile = input(">>>")
-if str.lower(profile) == "new":
-	profile = input("Profile name: ")
-	while profile in config.sections():
-		print("That profile name is already taken!")
-		profile = input("Profile name: ")
-	config[profile] = {}
-	network_protocol = input("Network protocol (IPv4/IPv6): ")
-	while (str.lower(network_protocol) != "ipv4") and (str.lower(network_protocol) != "ipv6"):
-		print("Invalid protocol, it has to be IPv4 or IPv6!")
-		network_protocol = str(input("Network protocol (IPv4/IPv6): "))
-	config[profile]["network_protocol"] = network_protocol
-	port = input("Port: ")
-	while not str.isdigit(port):
-		print("invalid port, try again.")
-		port = input("port: ")
-	port = int(port)
-	config[profile]["port"] = str(port)
-	max_population = input("Max population: ")
-	while not str.isdigit(max_population):
-		print("you should only enter numbers here")
-		max_population = input("Max population: ")
-	max_population = int(max_population)
-	config[profile]["max_population"] = str(max_population)
+choices = config.sections()
+choices.append("New")
+n_choices = len(choices)
+highlight = 1
+profile = 0
+c = 0
+
+stdscr = initscr()
+clear()
+noecho()
+cbreak()
+curs_set(0)
+startx = int((90 - WIDTH) / 2)
+starty = int((30 - HEIGHT) / 2)
+
+prof_select_win = newwin(HEIGHT, WIDTH, starty, startx)
+keypad(prof_select_win, True)
+mvaddstr(0, 0, "Select a pre-existing configuration profile, or create a new profile")
+mvaddstr(1, 0, "Use arrow keys navigate, press enter to select")
+refresh()
+print_menu(prof_select_win, highlight)
+
+while True:
+	c = wgetch(prof_select_win)
+	if c == KEY_UP:
+		if highlight == 1:
+			highlight == n_choices
+		else:
+			highlight -= 1
+	elif c == KEY_DOWN:
+		if highlight == n_choices:
+			highlight = 1
+		else:
+			highlight += 1
+	elif c == 10:   # ENTER is pressed
+		profile = choices[highlight-1]
+		clrtoeol()
+		refresh()
+		break
+	else:
+		mvaddstr(29, 0, str.format("Character pressed is = {0}", c))
+		clrtoeol()
+		refresh()
+	print_menu(prof_select_win, highlight)
+destroy_win(prof_select_win)
+clear()
+echo()
+curs_set(1)
+refresh()
+if profile == "New":
+	new_prof_box=newwin(20,60,int(5),15)
+	new_prof_win=newwin(18,58,6,16)
+	box(new_prof_box,0,0)
+	wrefresh(new_prof_box)
+	mvwaddstr(new_prof_win,0,0,"Profile name: ")
+	wrefresh(new_prof_win)
+	profile=wgetstr(new_prof_win)
+	while profile in config.sections() or profile.lower() == "new" or profile == "":
+		mvaddstr(29,0,"Profile name already taken.")
+		mvwaddstr(new_prof_win,0,0,"Profile name: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		profile=wgetstr(new_prof_win)
+	#config[profile]={}
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+	refresh()
+	network_protocol=wgetstr(new_prof_win)
+	while network_protocol.lower() != "ipv4":
+		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
+		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		network_protocol=wgetstr(new_prof_win)
+	#config[profile]["network_protocol"]=network_protocol
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,2,0,"Port: ")
+	refresh()
+	port=wgetstr(new_prof_win)
+	while port == ""  or not str.isdigit(port):
+		mvaddstr(29,0,"Invalid port, please try again.")
+		mvwaddstr(new_prof_win,2,0,"Port: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		port=wgetstr(new_prof_win)
+	#config[profile]["port"]=port
+	port=int(port)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,3,0,"Max population: ")
+	refresh()
+	max_population=wgetstr(new_prof_win)
+	while max_population == "" or not str.isdigit(max_population):
+		mvaddstr(29,0,"You should only enter numbers here.")
+		mvwaddstr(new_prof_win,3,0,"Max population: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		max_population=wgetstr(new_prof_win)
+	#config[profile]["max_population"]=max_population
+	max_population=int(max_population)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,4,0,"Root password: ")
+	refresh()
+	root_pass=wgetstr(new_prof_win)
+	while root_pass == "":
+		mvaddstr(29,0,"You can't just leave this blank!")
+		mvwaddstr(new_prof_win,4,0,"Root password: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		root_pass=wgetstr(new_prof_win)
+	#config[profile]["root_pass"]=root_pass
 	config.write(open("config_server.ini","w"))
-elif profile in config.sections():
-	network_protocol= str(config[profile]["network_protocol"])
-	port = int(config[profile]["port"])
-	max_population= int(config[profile]["max_population"])
+	destroy_win(new_prof_box)
+	destroy_win(new_prof_win)
+	clear()
+	refresh()
 else:
-	print("invalid profile selected, default profile has been selected automatically")
-	profile = "default"
-	network_protocol= str(config[profile]["network_protocol"])
-	port = int(config[profile]["port"])
-	max_population= int(config[profile]["max_population"])
-host = '0.0.0.0'
+	network_protocol=str(config[profile]["network_protocol"])
+	port=int(config[profile]["port"])
+	max_population=int(config[profile]["max_population"])
+	root_pass=str(config[profile]["root_pass"])
+
+host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
-s = socket
 taken_usernames=set()
 help=""
 root_help="ROOT COMMANDS:"
@@ -226,21 +335,39 @@ if str.lower(network_protocol)=="ipv6":
 	s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 elif str.lower(network_protocol)=="ipv4":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-else:
-    print("Invalid network protocol")
-    os._exit(1)
+
+logbox=newwin(27,90,0,0)
+logwin=newwin(24,88,1,1)
+inpbox=newwin(3,90,27,0)
+inpwin=newwin(1,88,28,1)
+box(logbox,0,0)
+box(inpbox,0,0)
+skrollok(logwin,1)
+wrefresh(logbox)
+wrefresh(inpbox)
+refresh()
 
 try:
-    s.bind((host, port))
+	s.bind((host,port))
 except socket.error as e:
-    print("Failed to bind\n", e)
-    os._exit(1)
+	waddstr(logwin,"Failed to bind\n"+e)
+	refresh()
+	getch()
+	endwin()
+	os._exit(1)
 
-s.listen(5)
-print("Using "+network_protocol)
-print("Max population:",max_population)
-print("Listening @ ",serverIP + ":" + str(port))
+s.listen()
+waddstr(logwin,"Using "+network_protocol+"\nMax population: "+max_population+"\nListening @ "+serverIP+":"+str(port))
 
+
+
+getch()
+refresh()
+endwin()
+#--------------------------------------------------------------------------------------------------
+
+
+"""
 while 1:
 	for n in range(len(client_handlers)):
 		if not client_handlers[n].is_alive():
@@ -257,3 +384,4 @@ while 1:
                                             target=clientHandler, # när den startar kommer den att starta med clientHandler
                                             daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
 	client_handlers[len(client_handlers)-1].start()               # startar threaden
+"""
