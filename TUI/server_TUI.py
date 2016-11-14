@@ -26,7 +26,7 @@ def getRaddr(conn):
             raddr= raddr[1:-1]
             raddr=raddr.replace("'", "")
     except:
-        print("[Error] Cannot identify raddr")
+        waddstr(logwin,"[Error] Cannot identify raddr")
         raddr="[Error] Cannot identify raddr"
     return raddr
 
@@ -171,6 +171,13 @@ def print_menu(prof_select_win, highlight):
 		y += 1
 	wrefresh(prof_select_win)
 
+def destroy_win(local_win):
+	wborder(local_win, CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '))
+	wclear(local_win)
+	wrefresh(local_win)
+	delwin(local_win)
+
+
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
 
@@ -214,71 +221,101 @@ while True:
 			highlight += 1
 	elif c == 10:   # ENTER is pressed
 		profile = choices[highlight-1]
-		break
-		mvaddstr(29,0,str("you selected: "+profile))
 		clrtoeol()
 		refresh()
+		break
 	else:
 		mvaddstr(29, 0, str.format("Character pressed is = {0}", c))
 		clrtoeol()
 		refresh()
 	print_menu(prof_select_win, highlight)
-delwin(prof_select_win)
-refresh()
+destroy_win(prof_select_win)
+clear()
 echo()
-if profile == "New":
-	new_prof_win=newwin(20,60,int((90-60)/2),int((30-20)/2))
-#	profile=wgetstr()
-	
-
-getch()
+curs_set(1)
 refresh()
-endwin()
-#--------------------------------------------------------------------------------------------------
-
-
-"""
-if str.lower(profile) == "new":
-	profile = input("Profile name: ")
-	while profile in config.sections():
-		print("That profile name is already taken!")
-		profile = input("Profile name: ")
-	config[profile] = {}
-	network_protocol = input("Network protocol (IPv4/IPv6): ")
-	while (str.lower(network_protocol) != "ipv4") and (str.lower(network_protocol) != "ipv6"):
-		print("Invalid protocol, it has to be IPv4 or IPv6!")
-		network_protocol = str(input("Network protocol (IPv4/IPv6): "))
-	config[profile]["network_protocol"] = network_protocol
-	port = input("Port: ")
-	while not str.isdigit(port):
-		print("invalid port, try again.")
-		port = input("port: ")
-	port = int(port)
-	config[profile]["port"] = str(port)
-	max_population = input("Max population: ")
-	while not str.isdigit(max_population):
-		print("you should only enter numbers here")
-		max_population = input("Max population: ")
-	max_population = int(max_population)
-	config[profile]["max_population"] = str(max_population)
+if profile == "New":
+	new_prof_box=newwin(20,60,int(5),15)
+	new_prof_win=newwin(18,58,6,16)
+	box(new_prof_box,0,0)
+	wrefresh(new_prof_box)
+	mvwaddstr(new_prof_win,0,0,"Profile name: ")
+	wrefresh(new_prof_win)
+	profile=wgetstr(new_prof_win)
+	while profile in config.sections() or profile.lower() == "new" or profile == "":
+		mvaddstr(29,0,"Profile name already taken.")
+		mvwaddstr(new_prof_win,0,0,"Profile name: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		profile=wgetstr(new_prof_win)
+	#config[profile]={}
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+	refresh()
+	network_protocol=wgetstr(new_prof_win)
+	while network_protocol.lower() != "ipv4":
+		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
+		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		network_protocol=wgetstr(new_prof_win)
+	#config[profile]["network_protocol"]=network_protocol
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,2,0,"Port: ")
+	refresh()
+	port=wgetstr(new_prof_win)
+	while port == ""  or not str.isdigit(port):
+		mvaddstr(29,0,"Invalid port, please try again.")
+		mvwaddstr(new_prof_win,2,0,"Port: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		port=wgetstr(new_prof_win)
+	#config[profile]["port"]=port
+	port=int(port)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,3,0,"Max population: ")
+	refresh()
+	max_population=wgetstr(new_prof_win)
+	while max_population == "" or not str.isdigit(max_population):
+		mvaddstr(29,0,"You should only enter numbers here.")
+		mvwaddstr(new_prof_win,3,0,"Max population: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		max_population=wgetstr(new_prof_win)
+	#config[profile]["max_population"]=max_population
+	max_population=int(max_population)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,4,0,"Root password: ")
+	refresh()
+	root_pass=wgetstr(new_prof_win)
+	while root_pass == "":
+		mvaddstr(29,0,"You can't just leave this blank!")
+		mvwaddstr(new_prof_win,4,0,"Root password: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		root_pass=wgetstr(new_prof_win)
+	#config[profile]["root_pass"]=root_pass
 	config.write(open("config_server.ini","w"))
-elif profile in config.sections():
-	network_protocol= str(config[profile]["network_protocol"])
-	port = int(config[profile]["port"])
-	max_population= int(config[profile]["max_population"])
+	destroy_win(new_prof_box)
+	destroy_win(new_prof_win)
+	clear()
+	refresh()
 else:
-	print("invalid profile selected, default profile has been selected automatically")
-	profile = "default"
-	network_protocol= str(config[profile]["network_protocol"])
-	port = int(config[profile]["port"])
-	max_population= int(config[profile]["max_population"])
-host = '0.0.0.0'
+	network_protocol=str(config[profile]["network_protocol"])
+	port=int(config[profile]["port"])
+	max_population=int(config[profile]["max_population"])
+	root_pass=str(config[profile]["root_pass"])
+
+host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
-s = socket
 taken_usernames=set()
 help=""
 root_help="ROOT COMMANDS:"
@@ -298,21 +335,39 @@ if str.lower(network_protocol)=="ipv6":
 	s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 elif str.lower(network_protocol)=="ipv4":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-else:
-    print("Invalid network protocol")
-    os._exit(1)
+
+logbox=newwin(27,90,0,0)
+logwin=newwin(24,88,1,1)
+inpbox=newwin(3,90,27,0)
+inpwin=newwin(1,88,28,1)
+box(logbox,0,0)
+box(inpbox,0,0)
+skrollok(logwin,1)
+wrefresh(logbox)
+wrefresh(inpbox)
+refresh()
 
 try:
-    s.bind((host, port))
+	s.bind((host,port))
 except socket.error as e:
-    print("Failed to bind\n", e)
-    os._exit(1)
+	waddstr(logwin,"Failed to bind\n"+e)
+	refresh()
+	getch()
+	endwin()
+	os._exit(1)
 
 s.listen()
-print("Using "+network_protocol)
-print("Max population:",max_population)
-print("Listening @ ",serverIP + ":" + str(port))
+waddstr(logwin,"Using "+network_protocol+"\nMax population: "+max_population+"\nListening @ "+serverIP+":"+str(port))
 
+
+
+getch()
+refresh()
+endwin()
+#--------------------------------------------------------------------------------------------------
+
+
+"""
 while 1:
 	for n in range(len(client_handlers)):
 		if not client_handlers[n].is_alive():

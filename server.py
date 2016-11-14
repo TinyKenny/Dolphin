@@ -76,6 +76,12 @@ def listenToClient(conn, username):
 			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
 		except ConnectionResetError:
+			cmh.common_message = str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
+		except BrokenPipeError:
 			cmh.common_message= str(username) + " disconnected"
 			thread_manager.acquire()
 			thread_manager.notify_all()
