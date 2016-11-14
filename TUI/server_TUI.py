@@ -10,8 +10,9 @@ from sys import platform
 
 class CommmonMessageHoster:
     common_message=""
-"""
+
 def getRaddr(conn):
+    global logwin
     raw = str(conn)
     raddr = ""
     try:
@@ -27,11 +28,12 @@ def getRaddr(conn):
             raddr=raddr.replace("'", "")
     except:
         waddstr(logwin,"[Error] Cannot identify raddr")
+        wrefresh(logwin)
         raddr="[Error] Cannot identify raddr"
     return raddr
 
 def listenToClient(conn, username):
-	global taken_usernames, help, root_help
+	global taken_usernames, help, root_help, root_pass, logwin
 	raddr=""
 	try:
 		raddr=getRaddr(conn)
@@ -44,32 +46,36 @@ def listenToClient(conn, username):
 	while True:
 		try:
 			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
-			print(cmh.common_message)
+			waddstr(logwin, "\n"+cmh.common_message)
+			wrefresh(logwin)
 			if cmh.common_message.startswith(username+":/"): #commands
-				if username=="root":
-					if cmh.common_message=="root:/terminate":
-						print("Terminating server")
+				if taken_usernames[username]:
+					if cmh.common_message==username+":/terminate":
+						waddstr(logwin,"\nTerminating server")
+						wrefresh(logwin)
 						s.close()
+						endwin()
 						os._exit(0)
-					elif cmh.common_message=="root:/users":
+					elif cmh.common_message==username+":/users -show":
 						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
 						for u in taken_usernames:
 							cmh.common_message=cmh.common_message+"\n"+u
+					elif cmh.common_message==(username+":/users"):
+						conn.send(str.encode("not implemented yet, use '/users -show' instead"))
 					elif cmh.common_message=="root:/enumerate":
 						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
 						for t in threading.enumerate():
 							conn.send(str.encode(str(t)+"\n"))
 						cmh.common_message=""
-					elif cmh.common_message.startswith("root:/kick "):
-#						if cmh.common_message[11:] in taken_usernames:
-#							if taken_usernames[cmh.common_message[11:]]:
-#								taken_usernames[cmh.common_message[11:]]=False
-#							elif not taken_usernames[cmh.common_message[11:]]:
-#								conn.send(str.encode("That user is not connected"))
-						if cmh.common_message[11:] not in taken_usernames:
+					elif cmh.common_message.startswith(username+":/kick "):
+						if cmh.common_message[len(username)+7:] not in taken_usernames:
 							conn.send(str.encode("That user is not connected"))
+				elif cmh.common_message==username+":/root "+root_pass and not taken_usernames[username]:
+					taken_usernames[username]=True
+					conn.send(str.encode("You now have admin rights!"))
+					cmh.common_message=""
 				if cmh.common_message.startswith(username+":/help"):
-					if username == "root":
+					if taken_usernames[username]:
 						conn.send(str.encode(help+root_help))
 					else:
 						conn.send(str.encode(help))
@@ -93,7 +99,7 @@ def listenToClient(conn, username):
 			break
 
 def sendToClient(conn, listener, username):
-	global taken_usernames
+	global taken_usernames, logwin
 	while listener.is_alive():
 		thread_manager.acquire() #hämtar managern
 		thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
@@ -102,10 +108,9 @@ def sendToClient(conn, listener, username):
 #        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
-		if cmh.common_message == ("root:/kick "+username):
+		if cmh.common_message.endswith(":/kick "+username) and taken_usernames[cmh.common_message.rsplit(":")[0]]:
 			conn.send(str.encode("You were kicked out <3"))
-#			taken_usernames[username]=False
-			taken_usernames.remove(username)
+			del taken_usernames[username]
 			conn.close()
 			break
 		else:
@@ -116,9 +121,10 @@ def sendToClient(conn, listener, username):
 				pass
 
 def clientHandler(sock):
-	global taken_usernames
+	global taken_usernames, logwin
 	random_welcome_message = ["You want the crucible? I am the crucible.",
-                              "FIGHT ON GERUDIAN!!!", "I can't believe what I'm seeing!",
+                              "FIGHT ON GERUDIAN!!!",
+							  "I can't believe what I'm seeing!",
                               "You can fight by my side anytime, Gaurdian",
                               "Is english class canceld tomorrow?"]
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
@@ -127,15 +133,17 @@ def clientHandler(sock):
 	
 	if username in taken_usernames:
 		sock.send(str.encode("That username is already taken."))
-		print("Disconnected from "+raddr)
+		waddstr(logwin,"\nDisconnected from "+raddr)
+		wrefresh(logwin)
 		sock.close()
 		return
 	elif username not in taken_usernames:
-		taken_usernames.update([username])
+		taken_usernames[username]=False
 	else:
-		print("shit got weird")
+		waddstr(logwin,"\nSomething went wrong with the username check.")
 		sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
-		print("Disconnected from " + raddr)
+		waddstr(logwin,"\nDisconnected from " + raddr)
+		wrefresh(logwin)
 		sock.close()
 		return
 
@@ -153,10 +161,10 @@ def clientHandler(sock):
 	while listener.is_alive():
 		time.sleep(0.1)
 	if username in taken_usernames:
-		taken_usernames.remove(username)
-	print("Disconnected from " + raddr)
-"""
-#--------------------------------------------------------------------------------------------------
+		del taken_usernames[username]
+	waddstr(logwin,"\nDisconnected from " + raddr)
+	wrefresh(logwin)
+
 def print_menu(prof_select_win, highlight):
 	x = 2
 	y = 2
@@ -316,7 +324,7 @@ client_handlers=[]
 cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
-taken_usernames=set()
+taken_usernames=dict()
 help=""
 root_help="ROOT COMMANDS:"
 command_dict={"/help":"View this message.",
@@ -342,7 +350,7 @@ inpbox=newwin(3,90,27,0)
 inpwin=newwin(1,88,28,1)
 box(logbox,0,0)
 box(inpbox,0,0)
-skrollok(logwin,1)
+scrollok(logwin,1)
 wrefresh(logbox)
 wrefresh(inpbox)
 refresh()
@@ -351,37 +359,32 @@ try:
 	s.bind((host,port))
 except socket.error as e:
 	waddstr(logwin,"Failed to bind\n"+e)
-	refresh()
+	wrefresh(logwin)
 	getch()
 	endwin()
 	os._exit(1)
 
 s.listen()
-waddstr(logwin,"Using "+network_protocol+"\nMax population: "+max_population+"\nListening @ "+serverIP+":"+str(port))
+waddstr(logwin,"Using "+network_protocol+"\nMax population: "+str(max_population)+"\nListening @ "+serverIP+":"+str(port))
+wrefresh(logwin)
 
-
-
-getch()
-refresh()
-endwin()
-#--------------------------------------------------------------------------------------------------
-
-
-"""
 while 1:
 	for n in range(len(client_handlers)):
 		if not client_handlers[n].is_alive():
 			client_handlers.pop(n)
 			break
-
 	sock, address = s.accept()
 	if len(client_handlers) > max_population:
 		sock.send(str.encode("Server full, try again later"))
 		sock.close()
-		continue #skippar resten av loopen och börjar om från början
-	print('connected to ' + address[0] + ':' + str(address[1]))
-	client_handlers.append(threading.Thread(kwargs={'sock':sock}, #passar sock som argument. kwargs=keyword arguments
-                                            target=clientHandler, # när den startar kommer den att starta med clientHandler
-                                            daemon=1))            # när programmet avslutas så dör även threaden (kanske löser linux upptagna portar?)
-	client_handlers[len(client_handlers)-1].start()               # startar threaden
-"""
+		continue
+	waddstr(logwin,"\nConnected to "+address[0]+":"+str(address[1]))
+	wrefresh(logwin)
+	client_handlers.append(threading.Thread(kwargs={'sock':sock},
+											target=clientHandler,
+											daemon=1))
+	client_handlers[len(client_handlers)-1].start()
+
+getch()
+refresh()
+endwin()
