@@ -91,6 +91,12 @@ def listenToClient(conn, username):
 			thread_manager.notify_all()
 			thread_manager.release()
 			break
+		except BrokenPipeError:
+			cmh.common_message= str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
 		except ConnectionAbortedError:
 			cmh.common_message= str(username) + " was kicked"
 			thread_manager.acquire()
