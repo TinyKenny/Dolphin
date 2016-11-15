@@ -11,128 +11,14 @@ from sys import platform
 class CommmonMessageHoster:
     common_message=""
 
-def getRaddr(conn):
-    global logwin
-    raw = str(conn)
-    raddr = ""
-    try:
-        network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
-        if network_protocol == "AF_INET6":
-            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-            raddr = raddr.replace(", 0, 0)", "")
-            raddr = raddr.replace("', ", ":")
-            raddr = raddr[2:]
-        elif (network_protocol == "AF_INET,"):
-            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
-            raddr= raddr[1:-1]
-            raddr=raddr.replace("'", "")
-    except:
-        waddstr(logwin,"[Error] Cannot identify raddr")
-        wrefresh(logwin)
-        raddr="[Error] Cannot identify raddr"
-    return raddr
-
-def listenToClient(conn, username):
-	global taken_usernames, help, root_help, root_pass, logwin
-	raddr=""
-	try:
-		raddr=getRaddr(conn)
-	except:
-		raddr = getRaddr(conn)
-	cmh.common_message = username + " connected"
-	thread_manager.acquire()
-	thread_manager.notify_all()
-	thread_manager.release()
-	while True:
-		try:
-			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
-			waddstr(logwin, "\n"+cmh.common_message)
-			wrefresh(logwin)
-			if cmh.common_message.startswith(username+":/"): #commands
-				if taken_usernames[username]:
-					if cmh.common_message==username+":/terminate":
-						waddstr(logwin,"\nTerminating server")
-						wrefresh(logwin)
-						s.close()
-						endwin()
-						os._exit(0)
-					elif cmh.common_message==username+":/users -show":
-						cmh.common_message=cmh.common_message+"\nCurrently connected users:"
-						for u in taken_usernames:
-							cmh.common_message=cmh.common_message+"\n"+u
-					elif cmh.common_message==(username+":/users"):
-						conn.send(str.encode("not implemented yet, use '/users -show' instead"))
-					elif cmh.common_message=="root:/enumerate":
-						conn.send(str.encode("Number of live threads: "+str(threading.active_count())))
-						for t in threading.enumerate():
-							conn.send(str.encode(str(t)+"\n"))
-						cmh.common_message=""
-					elif cmh.common_message.startswith(username+":/kick "):
-						if cmh.common_message[len(username)+7:] not in taken_usernames:
-							conn.send(str.encode("That user is not connected"))
-				elif cmh.common_message==username+":/root "+root_pass and not taken_usernames[username]:
-					taken_usernames[username]=True
-					conn.send(str.encode("You now have admin rights!"))
-					cmh.common_message=""
-				if cmh.common_message.startswith(username+":/help"):
-					if taken_usernames[username]:
-						conn.send(str.encode(help+root_help))
-					else:
-						conn.send(str.encode(help))
-					cmh.common_message=""
-				elif cmh.common_message.startswith(username+":/me"):
-					cmh.common_message=username+cmh.common_message[len(username+":/me"):]
-			thread_manager.acquire() #hämtar managern
-			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
-			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
-		except ConnectionResetError:
-			cmh.common_message= str(username) + " disconnected"
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-		except BrokenPipeError:
-			cmh.common_message= str(username) + " disconnected"
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-		except ConnectionAbortedError:
-			cmh.common_message= str(username) + " was kicked"
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-
-def sendToClient(conn, listener, username):
-	global taken_usernames, logwin
-	while listener.is_alive():
-		thread_manager.acquire() #hämtar managern
-		thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
-							  #automatiskt: thread_manager.release() #se rad 3 under
-							  # när den har blivt notifierad så hämtar den managern
-#        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
-							  # detta sker även här för att notify ska sprida sig till alla
-		thread_manager.release() #detta gör att manangern kan gå till andra trådar
-		if cmh.common_message.endswith(":/kick "+username) and taken_usernames[cmh.common_message.rsplit(":")[0]]:
-			conn.send(str.encode("You were kicked out <3"))
-			del taken_usernames[username]
-			conn.close()
-			break
-		else:
-			try:
-				conn.sendall(str.encode(cmh.common_message))
-				time.sleep(0.01) #för att hindra den från att notifiera sig själv
-			except ConnectionResetError:
-				pass
-
 def clientHandler(sock):
 	global taken_usernames, logwin
 	random_welcome_message = ["You want the crucible? I am the crucible.",
                               "FIGHT ON GERUDIAN!!!",
 							  "I can't believe what I'm seeing!",
                               "You can fight by my side anytime, Gaurdian",
-                              "Is english class canceld tomorrow?"]
+                              "Is english class canceld tomorrow?",
+							  "Livet är inte optimalt."]
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
 	username = (sock.recv(2048)).decode("utf-8")
 	raddr = getRaddr(sock)
@@ -171,6 +57,112 @@ def clientHandler(sock):
 	waddstr(logwin,"\nDisconnected from " + raddr)
 	wrefresh(logwin)
 
+def destroy_win(local_win):
+	wborder(local_win, CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '))
+	wclear(local_win)
+	wrefresh(local_win)
+	delwin(local_win)
+
+def getRaddr(conn):
+    global logwin
+    raw = str(conn)
+    raddr = ""
+    try:
+        network_protocol = raw[raw.index("AF_INET"):raw.index("AF_INET") + len("AF_INET") + 1]
+        if network_protocol == "AF_INET6":
+            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+            raddr = raddr.replace(", 0, 0)", "")
+            raddr = raddr.replace("', ", ":")
+            raddr = raddr[2:]
+        elif (network_protocol == "AF_INET,"):
+            raddr = raw[raw.index("raddr=") + len("raddr="):len(raw) - 1]
+            raddr= raddr[1:-1]
+            raddr=raddr.replace("'", "")
+    except:
+        waddstr(logwin,"[Error] Cannot identify raddr")
+        wrefresh(logwin)
+        raddr="[Error] Cannot identify raddr"
+    return raddr
+
+def interpret_commands(conn, username):
+	global taken_usernames, help, root_help, root_pass, logwin
+	if taken_usernames[username]: #root commands
+		if cmh.common_message==username+":/terminate":
+			waddstr(logwin,"\nTerminating server.")
+			wrefresh(logwin)
+			s.close()
+			endwin()
+			os._exit()
+		elif cmh.common_message==username+":/users -show":
+			users=cmh.common_message+"\nCurrently connected users:"
+			for u in taken_usernames:
+				users=users+"\n"+u
+			return(users)
+		elif cmh.common_message==username+":/users":
+			conn.send(str.encode(str(taken_usernames)))
+			return("")
+		elif cmh.common_message.startswith(username+":/kick "):
+			if cmh.common_message[len(username+":/kick "):] not in taken_usernames:
+				if taken_usernames[username]:
+					return(cmh.common_message+"\nYou can't kick that user.")
+				else:
+					conn.send(str.encode(cmh.common_message+"\nThat user is not connected."))
+					return("")
+	elif cmh.common_message==username+":/root "+root_pass:
+		taken_usernames[username]=True
+		conn.send(str.encode("You have admin rights!"))
+		return("")
+	if cmh.common_message==username+":/help":
+		if taken_usernames[username]:
+			conn.send(str.encode(help+root_help))
+			return("")
+		else:
+			conn.send(str.encode(help))
+			return("")
+	elif cmh.common_message.startswith(username+":/me"):
+		return (username+cmh.common_message[len(username+":/me"):])
+	return(cmh.common_message)
+
+def listenToClient(conn, username):
+	global taken_usernames, help, root_help, root_pass, logwin
+	raddr=""
+	try:
+		raddr=getRaddr(conn)
+	except:
+		raddr = getRaddr(conn)
+	cmh.common_message = username + " connected"
+	thread_manager.acquire()
+	thread_manager.notify_all()
+	thread_manager.release()
+	while True:
+		try:
+			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+			waddstr(logwin, "\n"+cmh.common_message)
+			wrefresh(logwin)
+			if cmh.common_message.startswith(username+":/"): #commands
+				cmh.common_message = interpret_commands(conn, username)
+			thread_manager.acquire() #hämtar managern
+			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
+		except ConnectionResetError:
+			cmh.common_message= str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
+		except BrokenPipeError:
+			cmh.common_message= str(username) + " disconnected"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
+		except ConnectionAbortedError:
+			cmh.common_message= str(username) + " was kicked"
+			thread_manager.acquire()
+			thread_manager.notify_all()
+			thread_manager.release()
+			break
+
 def print_menu(prof_select_win, highlight):
 	x = 2
 	y = 2
@@ -185,12 +177,74 @@ def print_menu(prof_select_win, highlight):
 		y += 1
 	wrefresh(prof_select_win)
 
-def destroy_win(local_win):
-	wborder(local_win, CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '))
-	wclear(local_win)
-	wrefresh(local_win)
-	delwin(local_win)
+def sendToClient(conn, listener, username):
+	global taken_usernames, logwin
+	while listener.is_alive():
+		thread_manager.acquire() #hämtar managern
+		thread_manager.wait() #säger till managern att "jag väntar på att någon ska notifiera mig"
+							  #automatiskt: thread_manager.release() #se rad 3 under
+							  # när den har blivt notifierad så hämtar den managern
+#        thread_manager.notify() #notifera en random tråd som vändtar, kräver att managern är i tråden
+							  # detta sker även här för att notify ska sprida sig till alla
+		thread_manager.release() #detta gör att manangern kan gå till andra trådar
+		if cmh.common_message.endswith(":/kick "+username) and taken_usernames[cmh.common_message.rsplit(":")[0]]:
+			conn.send(str.encode("You were kicked out <3"))
+			del taken_usernames[username]
+			conn.close()
+			break
+		else:
+			try:
+				conn.sendall(str.encode(cmh.common_message))
+				time.sleep(0.01) #för att hindra den från att notifiera sig själv
+			except ConnectionResetError:
+				pass
 
+def server_input():
+	global inpwin, logwin, taken_usernames
+	username = "SERVER"
+	while True:
+		server_message = wgetstr(inpwin)
+		werase(inpwin)
+		wrefresh(inpwin)
+		cmh.common_message=username+":"+server_message
+		waddstr(logwin,"\n"+cmh.common_message)
+		wrefresh(logwin)
+		if server_message.startswith("/"): #A lightweight, slightly modified verision of interpret_commands.
+			if server_message == "/terminate":
+				waddstr(logwin,"\nTerminating server.")
+				wrefresh(logwin)
+				s.close()
+				endwin()
+				os._exit()
+			elif server_message == "/users -show":
+				users = "\nCurrently connected users:"
+				for u in taken_usernames:
+					users=users+"\n"+u
+				cmh.common_message=cmh.common_message+users
+				waddstr(logwin,users)
+				wrefresh(logwin)
+			elif server_message == "/users":
+				cmh.common_message=""
+				waddstr(logwin,str(taken_usernames))
+				wrefresh(logwin)
+			elif server_message == "/kick ":
+				if server_message[len("/kick "):] not in taken_usernames:
+					waddstr(logwin,"\nThat user is not connected.")
+					wrefresh(logwin)
+			elif server_message == "/help":
+				cmh.common_message=""
+				waddstr(logwin,"\n"+help+root_help)
+				wrefresh(logwin)
+			elif server_message == "/me":
+				cmh.common_message=username+server_message[len("/me"):]
+				waddstr(logwin,"\n"+cmh.common_message)
+				wrefresh(logwin)
+		thread_manager.acquire()
+		thread_manager.notify_all()
+		thread_manager.release()
+	
+	
+	
 
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
@@ -331,14 +385,15 @@ cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 taken_usernames=dict()
+taken_usernames["SERVER"]=True
 help=""
 root_help="ROOT COMMANDS:"
 command_dict={"/help":"View this message.",
 			  "/me":"Works like the irc command"}
 root_command_dict={"/users":"Returns a list of all connected users",
+				   "/users -show":"Sends a list of all connected users, to all connected users",
 				   "/kick [username]":"Kicks the specified user.",
-				   "/terminate":"Terminates the server",
-				   "/enumerate":"Returns a list of all live threads"}
+				   "/terminate":"Terminates the server"}
 
 for command in command_dict:
 	help+=command+" "*(20-len(command))+command_dict[command]+"\n"
@@ -353,9 +408,10 @@ elif str.lower(network_protocol)=="ipv4":
 logbox=newwin(27,90,0,0)
 logwin=newwin(24,88,1,1)
 inpbox=newwin(3,90,27,0)
-inpwin=newwin(1,88,28,1)
+inpwin=newwin(1,85,28,4)
 box(logbox,0,0)
 box(inpbox,0,0)
+mvwaddstr(inpbox,1,1,">>>")
 scrollok(logwin,1)
 wrefresh(logbox)
 wrefresh(inpbox)
@@ -373,6 +429,8 @@ except socket.error as e:
 s.listen()
 waddstr(logwin,"Using "+network_protocol+"\nMax population: "+str(max_population)+"\nListening @ "+serverIP+":"+str(port))
 wrefresh(logwin)
+serverinput=threading.Thread(target=server_input,daemon=1)
+serverinput.start()
 
 while 1:
 	for n in range(len(client_handlers)):
