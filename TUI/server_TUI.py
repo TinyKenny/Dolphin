@@ -18,12 +18,13 @@ def clientHandler(sock):
 							  "I can't believe what I'm seeing!",
                               "You can fight by my side anytime, Gaurdian",
                               "Is english class canceld tomorrow?",
-							  "Livet är inte optimalt."]
+							  "Livet är inte optimalt.",
+							  "Show your support! Purchase Dolphin Pro - Premium edition today!"]
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
 	username = (sock.recv(2048)).decode("utf-8")
 	raddr = getRaddr(sock)
 	
-	if username in taken_usernames:
+	if username in taken_usernames or username.lower() == "server announcement":
 		sock.send(str.encode("That username is already taken."))
 		waddstr(logwin,"\nDisconnected from "+raddr)
 		wrefresh(logwin)
@@ -91,8 +92,6 @@ def interpret_commands(conn, username):
 			waddstr(logwin,"\nTerminating server.")
 			wrefresh(logwin)
 			s.close()
-			endwin()
-			os._exit()
 		elif cmh.common_message==username+":/users -show":
 			users=cmh.common_message+"\nCurrently connected users:"
 			for u in taken_usernames:
@@ -163,6 +162,78 @@ def listenToClient(conn, username):
 			thread_manager.release()
 			break
 
+def make_new_profile(config):
+	new_prof_box=newwin(20,60,int(5),15)
+	new_prof_win=newwin(18,58,6,16)
+	box(new_prof_box,0,0)
+	wrefresh(new_prof_box)
+	mvwaddstr(new_prof_win,0,0,"Profile name: ")
+	wrefresh(new_prof_win)
+	profile=wgetstr(new_prof_win)
+	while profile in config.sections() or profile.lower() == "new" or profile == "":
+		mvaddstr(29,0,"Profile name already taken.")
+		mvwaddstr(new_prof_win,0,0,"Profile name: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		profile=wgetstr(new_prof_win)
+	config[profile]={}
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+	refresh()
+	network_protocol=wgetstr(new_prof_win)
+	while network_protocol.lower() != "ipv4":
+		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
+		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		network_protocol=wgetstr(new_prof_win)
+	config[profile]["network_protocol"]=network_protocol
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,2,0,"Port: ")
+	refresh()
+	port=wgetstr(new_prof_win)
+	while port == ""  or not str.isdigit(port):
+		mvaddstr(29,0,"Invalid port, please try again.")
+		mvwaddstr(new_prof_win,2,0,"Port: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		port=wgetstr(new_prof_win)
+	config[profile]["port"]=port
+	port=int(port)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,3,0,"Max population: ")
+	refresh()
+	max_population=wgetstr(new_prof_win)
+	while max_population == "" or not str.isdigit(max_population):
+		mvaddstr(29,0,"You should only enter numbers here.")
+		mvwaddstr(new_prof_win,3,0,"Max population: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		max_population=wgetstr(new_prof_win)
+	config[profile]["max_population"]=max_population
+	max_population=int(max_population)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,4,0,"Root password: ")
+	refresh()
+	root_pass=wgetstr(new_prof_win)
+	while root_pass == "":
+		mvaddstr(29,0,"You can't just leave this blank!")
+		mvwaddstr(new_prof_win,4,0,"Root password: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		root_pass=wgetstr(new_prof_win)
+	config[profile]["root_pass"]=root_pass
+	config.write(open("config_server.ini","w"))
+	destroy_win(new_prof_box)
+	destroy_win(new_prof_win)
+	clear()
+	refresh()
+	return(profile,network_protocol,port,max_population,root_pass)
+
 def print_menu(prof_select_win, highlight):
 	x = 2
 	y = 2
@@ -188,7 +259,10 @@ def sendToClient(conn, listener, username):
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
 		if cmh.common_message.endswith(":/kick "+username) and taken_usernames[cmh.common_message.rsplit(":")[0]]:
-			conn.send(str.encode("You were kicked out <3"))
+			if random.randint(0,255) < 1:
+				conn.send(str.endoce("Error: Dolphin Premium edition required"))
+			else:
+				conn.send(str.encode("You were kicked out <3"))
 			del taken_usernames[username]
 			conn.close()
 			break
@@ -214,8 +288,6 @@ def server_input():
 				waddstr(logwin,"\nTerminating server.")
 				wrefresh(logwin)
 				s.close()
-				endwin()
-				os._exit()
 			elif server_message == "/users -show":
 				users = "\nCurrently connected users:"
 				for u in taken_usernames:
@@ -225,9 +297,9 @@ def server_input():
 				wrefresh(logwin)
 			elif server_message == "/users":
 				cmh.common_message=""
-				waddstr(logwin,str(taken_usernames))
+				waddstr(logwin,"\n"+str(taken_usernames))
 				wrefresh(logwin)
-			elif server_message == "/kick ":
+			elif server_message.startswith("/kick "):
 				if server_message[len("/kick "):] not in taken_usernames:
 					waddstr(logwin,"\nThat user is not connected.")
 					wrefresh(logwin)
@@ -235,16 +307,41 @@ def server_input():
 				cmh.common_message=""
 				waddstr(logwin,"\n"+help+root_help)
 				wrefresh(logwin)
-			elif server_message == "/me":
+			elif server_message.startswith("/me"):
 				cmh.common_message=username+server_message[len("/me"):]
 				waddstr(logwin,"\n"+cmh.common_message)
 				wrefresh(logwin)
+			elif server_message.startswith("/promote "):
+				if server_message[len("/promote "):] not in taken_usernames:
+					waddstr(logwin,"\nThat user is not connected.")
+					wrefresh(logwin)
+					cmh.common_message=""
+				elif taken_usernames[server_message[len("/promote "):]]:
+					waddstr(logwin,"\nThat user already has admin rights!")
+					wrefresh(logwin)
+					cmh.common_message=""
+				else:
+					taken_usernames[server_message[len("/promote "):]]=True
+					waddstr(logwin,"\nServer Announcement: "+server_message[len("/promote "):]+" has been promoted.")
+					wrefresh(logwin)
+					cmh.common_message="Server Announcement: "+server_message[len("/promote "):]+" has been promoted."
+			elif server_message.startswith("/demote "):
+				if server_message[len("/demote "):] not in taken_usernames:
+					waddstr(logwin,"\nThat user is not connected.")
+					wrefresh(logwin)
+					cmh.common_message=""
+				elif not taken_usernames[server_message[len("/promote "):]]:
+					waddstr(logwin,"\nThat user doesn't have admin rights!")
+					wrefresh(logwin)
+					cmh.common_message=""
+				else:
+					taken_usernames[server_message[len("/promote "):]]=False
+					waddstr(logwin,"\nServer Announcement: "+server_message[len("/promote "):]+" has been demoted.")
+					wrefresh(logwin)
+					cmh.common_message="Server Announcement: "+server_message[len("/promote "):]+" has been demoted."
 		thread_manager.acquire()
 		thread_manager.notify_all()
 		thread_manager.release()
-	
-	
-	
 
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
@@ -255,6 +352,7 @@ config = configparser.ConfigParser()
 config.read("config_server.ini")
 choices = config.sections()
 choices.append("New")
+choices.append("Manual")
 n_choices = len(choices)
 highlight = 1
 profile = 0
@@ -303,6 +401,8 @@ echo()
 curs_set(1)
 refresh()
 if profile == "New":
+	profile,network_protocol,port,max_population,root_pass = make_new_profile(config)
+	"""
 	new_prof_box=newwin(20,60,int(5),15)
 	new_prof_win=newwin(18,58,6,16)
 	box(new_prof_box,0,0)
@@ -372,18 +472,76 @@ if profile == "New":
 	destroy_win(new_prof_win)
 	clear()
 	refresh()
+	"""
+elif profile == "Manual":
+	new_prof_box=newwin(20,60,int(5),15)
+	new_prof_win=newwin(18,58,6,16)
+	box(new_prof_box,0,0)
+	wrefresh(new_prof_box)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,0,0,"Network protocol: ")
+	refresh()
+	network_protocol=wgetstr(new_prof_win)
+	while network_protocol.lower() != "ipv4":
+		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
+		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		network_protocol=wgetstr(new_prof_win)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,1,0,"Port: ")
+	refresh()
+	port=wgetstr(new_prof_win)
+	while port == ""  or not str.isdigit(port):
+		mvaddstr(29,0,"Invalid port, please try again.")
+		mvwaddstr(new_prof_win,2,0,"Port: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		port=wgetstr(new_prof_win)
+	port=int(port)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,2,0,"Max population: ")
+	refresh()
+	max_population=wgetstr(new_prof_win)
+	while max_population == "" or not str.isdigit(max_population):
+		mvaddstr(29,0,"You should only enter numbers here.")
+		mvwaddstr(new_prof_win,3,0,"Max population: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		max_population=wgetstr(new_prof_win)
+	max_population=int(max_population)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,3,0,"Root password: ")
+	refresh()
+	root_pass=wgetstr(new_prof_win)
+	while root_pass == "":
+		mvaddstr(29,0,"You can't just leave this blank!")
+		mvwaddstr(new_prof_win,4,0,"Root password: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		root_pass=wgetstr(new_prof_win)
+	destroy_win(new_prof_box)
+	destroy_win(new_prof_win)
+	clear()
+	refresh()
 else:
 	network_protocol=str(config[profile]["network_protocol"])
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
 
+version="0.0.0.1"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
 cmh = CommmonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
+s = socket
 taken_usernames=dict()
 taken_usernames["SERVER"]=True
 help=""
@@ -426,8 +584,12 @@ except socket.error as e:
 	endwin()
 	os._exit(1)
 
-s.listen()
-waddstr(logwin,"Using "+network_protocol+"\nMax population: "+str(max_population)+"\nListening @ "+serverIP+":"+str(port))
+s.listen(5)
+waddstr(logwin,"Running Dolphin v"+version+
+			   "\nUsing "+network_protocol+
+			   "\nMax population: "+str(max_population)+
+			   "\nListening @ "+serverIP+":"+str(port)+
+			   "\nRoot password is: "+root_pass)
 wrefresh(logwin)
 serverinput=threading.Thread(target=server_input,daemon=1)
 serverinput.start()
@@ -437,7 +599,13 @@ while 1:
 		if not client_handlers[n].is_alive():
 			client_handlers.pop(n)
 			break
-	sock, address = s.accept()
+	try:
+		sock, address = s.accept()
+	except OSError as e:
+		clear()
+		endwin()
+		print(e)
+		os._exit(1)	
 	if len(client_handlers) > max_population:
 		sock.send(str.encode("Server full, try again later"))
 		sock.close()
@@ -448,7 +616,3 @@ while 1:
 											target=clientHandler,
 											daemon=1))
 	client_handlers[len(client_handlers)-1].start()
-
-getch()
-refresh()
-endwin()

@@ -105,7 +105,7 @@ def sendToClient(conn, listener, username):
 							  # detta sker även här för att notify ska sprida sig till alla
 		thread_manager.release() #detta gör att manangern kan gå till andra trådar
 		if cmh.common_message == ("root:/kick "+username):
-			if radnom.randint(0,100) < 2:
+			if random.randint(0,100) < 2:
 				conn.send(str.encode("Wait, what?"))
 			else:
 				conn.send(str.encode("You were kicked out <3"))
