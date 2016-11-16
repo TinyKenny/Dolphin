@@ -305,7 +305,7 @@ def server_input():
 					wrefresh(logwin)
 			elif server_message == "/help":
 				cmh.common_message=""
-				waddstr(logwin,"\n"+help+root_help)
+				waddstr(logwin,"\n"+help+root_help+server_help)
 				wrefresh(logwin)
 			elif server_message.startswith("/me"):
 				cmh.common_message=username+server_message[len("/me"):]
@@ -545,18 +545,24 @@ s = socket
 taken_usernames=dict()
 taken_usernames["SERVER"]=True
 help=""
-root_help="ROOT COMMANDS:"
+root_help="ADMIN COMMANDS:"
+server_help="\nSEVER COMMANDS:"
 command_dict={"/help":"View this message.",
 			  "/me":"Works like the irc command"}
 root_command_dict={"/users":"Returns a list of all connected users",
 				   "/users -show":"Sends a list of all connected users, to all connected users",
 				   "/kick [username]":"Kicks the specified user.",
 				   "/terminate":"Terminates the server"}
+server_command_dict={"/promote [user]":"Grants [user] admin rights",
+					 "/demote [user]":"Removes admin rights from [user]"}
 
 for command in command_dict:
 	help+=command+" "*(20-len(command))+command_dict[command]+"\n"
 for command in root_command_dict:
 	root_help+="\n"+command+" "*(20-len(command))+root_command_dict[command]
+for command in server_command_dict:
+	server_help+="\n"+command+" "*(20-len(command))+server_command_dict[command]
+	
 
 if str.lower(network_protocol)=="ipv6":
 	s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
