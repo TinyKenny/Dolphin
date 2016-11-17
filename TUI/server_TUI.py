@@ -3,7 +3,9 @@ import random
 import threading
 import os
 import time
+import datetime
 import configparser
+#import logging
 from unicurses import *
 from sys import platform
 
@@ -234,6 +236,63 @@ def make_new_profile(config):
 	refresh()
 	return(profile,network_protocol,port,max_population,root_pass)
 
+def make_temp_profile(config):
+	new_prof_box=newwin(20,60,int(5),15)
+	new_prof_win=newwin(18,58,6,16)
+	box(new_prof_box,0,0)
+	wrefresh(new_prof_box)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,0,0,"Network protocol: ")
+	refresh()
+	network_protocol=wgetstr(new_prof_win)
+	while network_protocol.lower() != "ipv4":
+		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
+		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		network_protocol=wgetstr(new_prof_win)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,1,0,"Port: ")
+	refresh()
+	port=wgetstr(new_prof_win)
+	while port == ""  or not str.isdigit(port):
+		mvaddstr(29,0,"Invalid port, please try again.")
+		mvwaddstr(new_prof_win,2,0,"Port: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		port=wgetstr(new_prof_win)
+	port=int(port)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,2,0,"Max population: ")
+	refresh()
+	max_population=wgetstr(new_prof_win)
+	while max_population == "" or not str.isdigit(max_population):
+		mvaddstr(29,0,"You should only enter numbers here.")
+		mvwaddstr(new_prof_win,3,0,"Max population: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		max_population=wgetstr(new_prof_win)
+	max_population=int(max_population)
+	mvaddstr(29,0," ")
+	clrtoeol()
+	mvwaddstr(new_prof_win,3,0,"Root password: ")
+	refresh()
+	root_pass=wgetstr(new_prof_win)
+	while root_pass == "":
+		mvaddstr(29,0,"You can't just leave this blank!")
+		mvwaddstr(new_prof_win,4,0,"Root password: ")
+		wclrtoeol(new_prof_win)
+		refresh()
+		root_pass=wgetstr(new_prof_win)
+	destroy_win(new_prof_box)
+	destroy_win(new_prof_win)
+	clear()
+	refresh()
+	return (network_protocol,port,max_population,root_pass)
+
 def print_menu(prof_select_win, highlight):
 	x = 2
 	y = 2
@@ -271,6 +330,8 @@ def sendToClient(conn, listener, username):
 				conn.sendall(str.encode(cmh.common_message))
 				time.sleep(0.01) #för att hindra den från att notifiera sig själv
 			except ConnectionResetError:
+				pass
+			except BrokenPipeError:
 				pass
 
 def server_input():
@@ -343,8 +404,15 @@ def server_input():
 		thread_manager.notify_all()
 		thread_manager.release()
 
+#logging.basicConfig(filename=str(datetime.date.today())+".log",format="%(asctime)s %(levelname)s:%(message)s" , level=logging.DEBUG)
+#logging.debug("Server started.")
+
+
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
+
+elif platform == "linux":
+	os.system("set noglob; setenv COLUMNS '90'; setenv LINES '30'; unset noglob")
 
 WIDTH = 30
 HEIGHT = 10
@@ -396,145 +464,22 @@ while True:
 		refresh()
 	print_menu(prof_select_win, highlight)
 destroy_win(prof_select_win)
+#logging.debug("Profile selected.")
 clear()
 echo()
 curs_set(1)
 refresh()
 if profile == "New":
 	profile,network_protocol,port,max_population,root_pass = make_new_profile(config)
-	"""
-	new_prof_box=newwin(20,60,int(5),15)
-	new_prof_win=newwin(18,58,6,16)
-	box(new_prof_box,0,0)
-	wrefresh(new_prof_box)
-	mvwaddstr(new_prof_win,0,0,"Profile name: ")
-	wrefresh(new_prof_win)
-	profile=wgetstr(new_prof_win)
-	while profile in config.sections() or profile.lower() == "new" or profile == "":
-		mvaddstr(29,0,"Profile name already taken.")
-		mvwaddstr(new_prof_win,0,0,"Profile name: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		profile=wgetstr(new_prof_win)
-	#config[profile]={}
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,1,0,"Network protocol: ")
-	refresh()
-	network_protocol=wgetstr(new_prof_win)
-	while network_protocol.lower() != "ipv4":
-		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
-		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		network_protocol=wgetstr(new_prof_win)
-	#config[profile]["network_protocol"]=network_protocol
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,2,0,"Port: ")
-	refresh()
-	port=wgetstr(new_prof_win)
-	while port == ""  or not str.isdigit(port):
-		mvaddstr(29,0,"Invalid port, please try again.")
-		mvwaddstr(new_prof_win,2,0,"Port: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		port=wgetstr(new_prof_win)
-	#config[profile]["port"]=port
-	port=int(port)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,3,0,"Max population: ")
-	refresh()
-	max_population=wgetstr(new_prof_win)
-	while max_population == "" or not str.isdigit(max_population):
-		mvaddstr(29,0,"You should only enter numbers here.")
-		mvwaddstr(new_prof_win,3,0,"Max population: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		max_population=wgetstr(new_prof_win)
-	#config[profile]["max_population"]=max_population
-	max_population=int(max_population)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,4,0,"Root password: ")
-	refresh()
-	root_pass=wgetstr(new_prof_win)
-	while root_pass == "":
-		mvaddstr(29,0,"You can't just leave this blank!")
-		mvwaddstr(new_prof_win,4,0,"Root password: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		root_pass=wgetstr(new_prof_win)
-	#config[profile]["root_pass"]=root_pass
-	config.write(open("config_server.ini","w"))
-	destroy_win(new_prof_box)
-	destroy_win(new_prof_win)
-	clear()
-	refresh()
-	"""
 elif profile == "Manual":
-	new_prof_box=newwin(20,60,int(5),15)
-	new_prof_win=newwin(18,58,6,16)
-	box(new_prof_box,0,0)
-	wrefresh(new_prof_box)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,0,0,"Network protocol: ")
-	refresh()
-	network_protocol=wgetstr(new_prof_win)
-	while network_protocol.lower() != "ipv4":
-		mvaddstr(29,0,"Only IPv4 is supported at the moment.")
-		mvwaddstr(new_prof_win,1,0,"Network protocol: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		network_protocol=wgetstr(new_prof_win)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,1,0,"Port: ")
-	refresh()
-	port=wgetstr(new_prof_win)
-	while port == ""  or not str.isdigit(port):
-		mvaddstr(29,0,"Invalid port, please try again.")
-		mvwaddstr(new_prof_win,2,0,"Port: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		port=wgetstr(new_prof_win)
-	port=int(port)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,2,0,"Max population: ")
-	refresh()
-	max_population=wgetstr(new_prof_win)
-	while max_population == "" or not str.isdigit(max_population):
-		mvaddstr(29,0,"You should only enter numbers here.")
-		mvwaddstr(new_prof_win,3,0,"Max population: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		max_population=wgetstr(new_prof_win)
-	max_population=int(max_population)
-	mvaddstr(29,0," ")
-	clrtoeol()
-	mvwaddstr(new_prof_win,3,0,"Root password: ")
-	refresh()
-	root_pass=wgetstr(new_prof_win)
-	while root_pass == "":
-		mvaddstr(29,0,"You can't just leave this blank!")
-		mvwaddstr(new_prof_win,4,0,"Root password: ")
-		wclrtoeol(new_prof_win)
-		refresh()
-		root_pass=wgetstr(new_prof_win)
-	destroy_win(new_prof_box)
-	destroy_win(new_prof_win)
-	clear()
-	refresh()
+	network_protocol,port,max_population,root_pass = make_temp_profile(config)
 else:
 	network_protocol=str(config[profile]["network_protocol"])
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-
-version="0.0.0.1"
+#logging.debug("Settings loaded.")
+version="0.0.1.0"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
@@ -583,8 +528,10 @@ refresh()
 
 try:
 	s.bind((host,port))
+	#logging.debug("Bound to: "+host+str(port))
 except socket.error as e:
 	waddstr(logwin,"Failed to bind\n"+e)
+	#logging.critical("Failed to bind\n"+e)
 	wrefresh(logwin)
 	getch()
 	endwin()

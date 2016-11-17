@@ -11,5 +11,5 @@ fixa så att servern vet vilken ip den har
 
 Special thanks goes to:
 Khilled Kenny, for some great advice about what programming laguage to use, and why.
-The New Boston, for teaching us Python
+The New Boston, for making the video tutorials from which we learned Python.
 The developer/developers of UniCurses and the developers of PDCurses, for making the TUI verision of Dolphin possible.
