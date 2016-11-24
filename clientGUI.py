@@ -265,6 +265,10 @@ class GUI:
         except ConnectionError as e:  # this will happen when the server is shut down
             self.print_to_log("Disconnected from: " + self.chat_server.get())
             self.chat_server.set('')
+        except OSError as e:
+            self.print_to_log(e)
+            if str(e)[0:11]=="[Errno 107]":
+                self.print_to_log("Please check if server is running")
 
     def print_to_log(self, msg):
         self.msg_log.insert(END, msg)
@@ -290,8 +294,9 @@ class GUI:
     def manual_connect(self):
         connet_window=Tk()
         connet_window.title("Manual Connect")
+        connet_window.configure(bg=self.bg_color)
         #username
-        Label(connet_window, text="Username").grid(row=0, column=0, sticky='E')
+        Label(connet_window, text="Username", bg=self.bg_color).grid(row=0, column=0, sticky='E')
         username_field=Entry(connet_window,
                          width=16,
                          exportselection=0,
@@ -300,7 +305,7 @@ class GUI:
         username_field.grid(row=0, column=1, sticky='W', pady=2)
 
         #ip
-        Label(connet_window, text="IP adresss").grid(row=1, column=0, sticky='E')
+        Label(connet_window, text="IP adresss", bg=self.bg_color).grid(row=1, column=0, sticky='E')
         chat_server_field=Entry(connet_window,
                               width=16,
                               exportselection=0,
@@ -309,7 +314,7 @@ class GUI:
         chat_server_field.grid(row=1, column=1, pady=2)
 
         #port
-        Label(connet_window, text="Port").grid(row=2, column=0, sticky='E')
+        Label(connet_window, text="Port", bg=self.bg_color).grid(row=2, column=0, sticky='E')
         port_field=Entry(connet_window,
                          width=5,
                          exportselection=0,
@@ -324,19 +329,21 @@ class GUI:
 
         def setIPv6():
             self.network_protocol.set("IPv6")
-        network_protocol_frame=LabelFrame(connet_window, text="Network Protocol")
+        network_protocol_frame=LabelFrame(connet_window, text="Network Protocol", bg=self.bg_color)
         network_protocol_frame.grid(row=3, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
                                 text="IPv4", variable=self.network_protocol,
                                 value='IPv4',
-                                command=setIPv4)
+                                command=setIPv4,
+                                bg = self.bg_color)
         ipv4_butt.grid()
         ipv4_butt.select()
         ipv6_butt = Radiobutton(network_protocol_frame,
                                 text="IPv6",
                                 variable=self.network_protocol,
                                 value='IPv6',
-                                command=setIPv6)
+                                command=setIPv6,
+                                bg=self.bg_color)
         ipv6_butt.grid()
 
         #buttons frame
@@ -366,19 +373,23 @@ class GUI:
             connet_window.destroy()
 
 
-        butt_frame=Frame(connet_window)
+        butt_frame=Frame(connet_window, bg=self.bg_color)
         butt_frame.grid(row=4, columnspan=2, pady=4)
         connect_butt=Button(butt_frame,
                             text="Connect",
-                            fg='green',
+                            fg='#86FF59',
                             activeforeground='green',
-                            command=connect)
+                            command=connect,
+                            bg=self.butt_color,
+                           activebackground=self.active_butt_color)
         cancel_butt=Button(butt_frame,
                            text="Cancel",
-                           fg='red',
+                           fg='#FA4854',
                            activeforeground='red',
-                           command=cancel)
-        connect_butt.pack(side=LEFT)
+                           command=cancel,
+                           bg=self.butt_color,
+                           activebackground=self.active_butt_color)
+        connect_butt.pack(side=LEFT, padx=5)
         cancel_butt.pack(side=RIGHT)
 
         connet_window.mainloop()
@@ -405,7 +416,8 @@ class GUI:
             self.print_to_log("Message of the day: " + str(data.decode('utf-8')))  # currently just a random quote
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
         except socket.error as e:  # couldn't connect to given IP + port
-            self.print_to_log(("Cound not connect to", self.chat_server.get() + ":" + str(self.port.get()) + "\n" + str(e)))
+            self.print_to_log(("Cound not connect to" + self.chat_server.get() + ":" + str(self.port.get())))
+            self.print_to_log(str(e))
 
         reciever = threading.Thread(target=self.recieve_messages, daemon=0)
         reciever.start()
@@ -413,28 +425,36 @@ class GUI:
 
     def build_window(self, window):
         window.title("Dolphin")
-        toolbar_frame = Frame(window, bg="grey")  # the toolbar frame
+
+        self.bg_color="#8BA9B3"#the backgrond color of the window
+        #button colors
+        self.butt_color = "#685370"
+        self.active_butt_color = "#BBA3C4" #color when mouse hovers over it
+        butt_fg_color = "white"
+
+        toolbar_frame = Frame(window, bg="#536970")  # the toolbar frame
         toolbar_frame.pack(side=TOP, fill=X)
 
-        right_hand_frame = Frame(window)  # splits the rest of the window in two
+        right_hand_frame = Frame(window, bg=self.bg_color)  # splits the rest of the window in two
         right_hand_frame.pack(side=RIGHT, fill=Y)
-        left_hand_frame = Frame(window, bg="blue")
+        left_hand_frame = Frame(window, bg=self.bg_color)
         left_hand_frame.pack(side=LEFT, fill=Y)
 
         info_frame = LabelFrame(right_hand_frame,  # creates the info frame
                                      text="Connection information",
-                                     fg="black")
+                                     fg="black",
+                                     bg=self.bg_color)
         info_frame.pack(pady=5, padx=5)
 
         ad_frame = Frame(right_hand_frame, bg="black")  # the advertisment frame (optinal)
         ad_frame.pack(side=BOTTOM)
-        entry_frame = Frame(left_hand_frame)
+        entry_frame = Frame(left_hand_frame, bg=self.bg_color)
         entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
 
-        log_frame = Frame(left_hand_frame)  # the log and log scroll frame
+        log_frame = Frame(left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
         log_frame.pack(side=LEFT, fill=Y)
 
-        entry_marking = Label(entry_frame, text=">>>")  # the 3 arrows
+        entry_marking = Label(entry_frame, text=">>>", bg=self.bg_color)  # the 3 arrows
         entry_marking.pack(side=LEFT)
 
         scroll = Scrollbar(log_frame, orient=VERTICAL)  # scroller
@@ -457,11 +477,11 @@ class GUI:
 
         self.user_input = StringVar()
         entry = Entry(entry_frame,  # the input field
-                           width=95,
-                           highlightbackground="black",
-                           bg="white",
-                           exportselection=0,
-                           textvariable=self.user_input)
+                      width=95,
+                      highlightbackground="black",
+                      bg="white",
+                      exportselection=0,
+                      textvariable=self.user_input)
 
         def entry_event_handler(event, self=self):
             self.read_input()
@@ -473,16 +493,15 @@ class GUI:
         entry.bind('<Return>', entry_event_handler)  # makes enter key send message
         entry.pack(padx=5, pady=5, side=LEFT)
 
-        info_keys_color = "black"
-        info_keys = [Label(info_frame, text="Server name:", fg=info_keys_color),
-                          Label(info_frame, text="IP:", fg=info_keys_color),
-                          Label(info_frame, text="Username:", fg=info_keys_color),
-                          Label(info_frame, text="Level:", fg=info_keys_color),]
+        info_keys = [Label(info_frame, text="Server name:", bg=self.bg_color),
+                          Label(info_frame, text="IP:", bg=self.bg_color),
+                          Label(info_frame, text="Username:", bg=self.bg_color),
+                          Label(info_frame, text="Level:", bg=self.bg_color),]
 
-        info_values = [Label(info_frame, text="placeholder", fg=info_keys_color),
-                            Label(info_frame, textvariable=self.chat_server, fg=info_keys_color),
-                            Label(info_frame, textvariable=self.username, fg=info_keys_color),
-                            Label(info_frame, text="placeholder", fg=info_keys_color)]
+        info_values = [Label(info_frame, text="placeholder", bg=self.bg_color),
+                            Label(info_frame, textvariable=self.chat_server, bg=self.bg_color),
+                            Label(info_frame, textvariable=self.username, bg=self.bg_color),
+                            Label(info_frame, text="placeholder", bg=self.bg_color)]
 
         for n in range(len(info_keys)):
             info_keys[n].grid(row=n, column=0, sticky=E)
@@ -492,9 +511,11 @@ class GUI:
         ad.pack(padx=5, pady=5)
 
         # TOOLBAR BUTTONS
+
         def conn_or_disconn():
             if self.c_or_dc.get() == "Connect":
-                self.manual_connect()
+                manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1)
+                manual_conn_thread.start()
             elif self.c_or_dc.get() == "Disconnect":
                 self.disconnect()
 
@@ -502,17 +523,39 @@ class GUI:
         self.c_or_dc.set("Connect")
         connect_butt = Button(toolbar_frame,
                               textvariable=self.c_or_dc,
-                              command=conn_or_disconn)
+                              command=conn_or_disconn,
+                              bg=self.butt_color,
+                              bd=2,
+                              height=2,
+                              fg=butt_fg_color,
+                              activebackground=self.active_butt_color)
 
         profile_butt = Menubutton(toolbar_frame,
                                   text="Profiles",
-                                  relief=RAISED, bd=2)
-        profile_butt.menu=Menu(profile_butt, tearoff=0)
+                                  relief=RAISED,
+                                  bd=2,
+                                  height=2,
+                                  bg=self.butt_color,
+                                  fg=butt_fg_color,
+                                  activebackground=self.active_butt_color)
+        profile_butt.menu=Menu(profile_butt,
+                               bd=2,
+                               tearoff=0,
+                               bg=self.butt_color,
+                               fg=butt_fg_color,
+                               activebackground=self.active_butt_color)
+
         profile_butt.menu.add_command(label='New', command=self.new_profile)
         profile_butt.menu.add_command(label='Edit', command=self.edit_profiles)
         profile_butt.menu.add_command(label='Use', command=self.use_profile)
         profile_butt['menu']=profile_butt.menu
-        settings_butt = Button(toolbar_frame, text="Settings")
+        settings_butt = Button(toolbar_frame,
+                               text="Settings",
+                               height=2,
+                               bd=2,
+                               bg=self.butt_color,
+                               fg=butt_fg_color,
+                               activebackground=self.active_butt_color)
 
         connect_butt.pack(side=LEFT, padx=3, pady=2)
         profile_butt.pack(side=LEFT, padx=3, pady=2)
