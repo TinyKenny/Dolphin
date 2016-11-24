@@ -10,7 +10,80 @@ version="Version 0.0.0.2"
 
 class GUI:
     def spacer(self, spaces, string):
-        return (spaces - len(string)) * " "
+        return ((spaces - len(string)) * " ")
+
+    def new_profile(self):
+        self.print_to_log("new profile")
+
+    def edit_profiles(self):
+        self.print_to_log("edit profile")
+
+    def use_profile(self):
+        use_profile_window = Tk()
+        use_profile_window.title("Select profile")
+
+        config = configparser.ConfigParser()
+        config.read("profiles.ini")
+
+        scroll = Scrollbar(use_profile_window, orient=VERTICAL)  # scroller
+        scroll.grid(row=0, column=0, pady=3, sticky='E')
+
+        selections = StringVar()
+
+
+        selection_box = Listbox(use_profile_window,
+                                bg="white",
+                                width=10,
+                                height=5,
+                                selectmode=SINGLE,
+                                exportselection=0,
+                                yscrollcommand=scroll.set,
+                                listvariable=selections,#FUCKING BS PYTHON IGNORES THIS LINE
+                                activestyle=NONE)
+        scroll['command'] = selection_box.yview
+        selection_box.grid(row=0, column=1, sticky='W')
+
+        selection_box.insert(END, "Manual")
+        selections_list = []
+        for sel in config.sections():
+            selection_box.insert(END, sel)
+            selections_list.append(sel)
+
+        # buttons
+        def cancel():
+            use_profile_window.destroy()
+
+        def connect():
+            if str(selection_box.curselection()) == "()":
+                return 0
+            elif str(selection_box.curselection()) == "(0,)":
+                use_profile_window.destroy()
+            else:
+                selected_profile = selections_list[int(str(selection_box.curselection())[1:-2]) - 1]
+                print(type(selected_profile))
+                self.username.set(config[selected_profile]["username"])
+                self.port.set(config[selected_profile]["port"])
+                self.chat_server.set(config[selected_profile]["ip"])
+                self.network_protocol.set(config[selected_profile]["network_protocol"])
+                use_profile_window.destroy()
+                self.connect()
+
+        butt_frame = Frame(use_profile_window)
+        butt_frame.grid(row=1, columnspan=2, pady=4, padx=4)
+        connect_butt = Button(butt_frame,
+                              text="Connect",
+                              fg='green',
+                              activeforeground='green',
+                              command=connect)
+        cancel_butt = Button(butt_frame,
+                             text="Cancel",
+                             fg='red',
+                             activeforeground='red',
+                             command=cancel)
+        connect_butt.pack(side=LEFT, padx=2)
+        cancel_butt.pack(side=RIGHT)
+
+        use_profile_window.mainloop()
 
     def command_interpreter(self, client_message):
         if client_message == "/quit":
@@ -25,12 +98,12 @@ class GUI:
         elif client_message[0:6] == "/save ":
             configEditor = configparser.RawConfigParser()
 
-            for profile in config.sections():  # lägga till de gamla profilerna i den nya filen
+            for profile in self.config.sections():  # lägga till de gamla profilerna i den nya filen
                 configEditor.add_section(profile)
-                configEditor.set(profile, "ip", config[profile]["ip"])
-                configEditor.set(profile, "port", config[profile]["port"])
-                configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
-                configEditor.set(profile, "username", config[profile]["username"])
+                configEditor.set(profile, "ip", self.config[profile]["ip"])
+                configEditor.set(profile, "port", self.config[profile]["port"])
+                configEditor.set(profile, "network_protocol", self.config[profile]["network_protocol"])
+                configEditor.set(profile, "username", self.config[profile]["username"])
                 if developer_mode:
                     configEditor.set(profile, "developer_mode", "True")
 
@@ -46,7 +119,7 @@ class GUI:
 
             with open('profiles.ini', 'w') as new_configfile:
                 configEditor.write(new_configfile)
-                config.read("profiles.ini")
+                self.config.read("profiles.ini")
                 self.print_to_log("Done!")
 
         elif client_message[0:5] == "/del ":
@@ -190,7 +263,8 @@ class GUI:
                     raise ConnectionError  # meddelandet är tomt, linux har lite svårt att fatta när det är dags att gå hem annars
                 self.print_to_log(server_message)
         except ConnectionError as e:  # this will happen when the server is shut down
-            self.print_to_log("Disconnected from:" + chat_server.get())
+            self.print_to_log("Disconnected from: " + self.chat_server.get())
+            self.chat_server.set('')
 
     def print_to_log(self, msg):
         self.msg_log.insert(END, msg)
@@ -242,6 +316,7 @@ class GUI:
                          textvariable=self.port,
                          bg="white")
         port_field.grid(row=2, column=1, sticky='W', pady=2)
+        port_field.insert(END, "5555")
 
         #network protocol
         def setIPv4():
@@ -273,7 +348,7 @@ class GUI:
             connet_window.destroy()
 
         def connect():
-            '''print(self.username.get())
+            ''''print(self.username.get())
             print(self.network_protocol.get())
             print(self.chat_server.get())
             print(self.port.get())'''
@@ -282,8 +357,14 @@ class GUI:
                 self.port.set(5555)
                 self.chat_server.set("127.0.0.1")
                 ipv4_butt.invoke() #sätter IPv4
+            else:
+                self.username.set(username_field.get())
+                #network protocol is alredy set
+                self.chat_server.set(chat_server_field.get())
+                self.port.set(port_field.get())
             self.connect()
             connet_window.destroy()
+
 
         butt_frame=Frame(connet_window)
         butt_frame.grid(row=4, columnspan=2, pady=4)
@@ -303,10 +384,12 @@ class GUI:
         connet_window.mainloop()
 
     def disconnect(self):
-        print("Disconnecting...")
         self.s.close()
+        self.username.set('')
+        #self.chat_server.set('') this is done in self.recieve_messages()
+        self.port.set('')
+        self.network_protocol.set('')
         self.c_or_dc.set("Connect")
-        pass
 
     def connect(self):
         if self.network_protocol.get() == "IPv4":
@@ -317,7 +400,7 @@ class GUI:
             self.print_to_log("Corrupt profile or invalid input")
         try:
             self.s.connect((self.chat_server.get(), self.port.get()))
-            self.print_to_log(("Connected to: " + self.chat_server.get() + ":" + str(self.port.get())))
+            self.print_to_log(("Connected to: " + self.chat_server.get()))
             data = self.s.recv(2048)  # recieve the message of the day
             self.print_to_log("Message of the day: " + str(data.decode('utf-8')))  # currently just a random quote
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
@@ -330,35 +413,35 @@ class GUI:
 
     def build_window(self, window):
         window.title("Dolphin")
-        self.toolbar_frame = Frame(window, bg="grey")  # the toolbar frame
-        self.toolbar_frame.pack(side=TOP, fill=X)
+        toolbar_frame = Frame(window, bg="grey")  # the toolbar frame
+        toolbar_frame.pack(side=TOP, fill=X)
 
-        self.right_hand_frame = Frame(window)  # splits the rest of the window in two
-        self.right_hand_frame.pack(side=RIGHT, fill=Y)
-        self.left_hand_frame = Frame(window, bg="blue")
-        self.left_hand_frame.pack(side=LEFT, fill=Y)
+        right_hand_frame = Frame(window)  # splits the rest of the window in two
+        right_hand_frame.pack(side=RIGHT, fill=Y)
+        left_hand_frame = Frame(window, bg="blue")
+        left_hand_frame.pack(side=LEFT, fill=Y)
 
-        self.info_frame = LabelFrame(self.right_hand_frame,  # creates the info frame
+        info_frame = LabelFrame(right_hand_frame,  # creates the info frame
                                      text="Connection information",
                                      fg="black")
-        self.info_frame.pack(pady=5, padx=5)
+        info_frame.pack(pady=5, padx=5)
 
-        self.ad_frame = Frame(self.right_hand_frame, bg="black")  # the advertisment frame (optinal)
-        self.ad_frame.pack(side=BOTTOM)
-        self.entry_frame = Frame(self.left_hand_frame)
-        self.entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
+        ad_frame = Frame(right_hand_frame, bg="black")  # the advertisment frame (optinal)
+        ad_frame.pack(side=BOTTOM)
+        entry_frame = Frame(left_hand_frame)
+        entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
 
-        self.log_frame = Frame(self.left_hand_frame)  # the log and log scroll frame
-        self.log_frame.pack(side=LEFT, fill=Y)
+        log_frame = Frame(left_hand_frame)  # the log and log scroll frame
+        log_frame.pack(side=LEFT, fill=Y)
 
-        self.entry_marking = Label(self.entry_frame, text=">>>")  # the 3 arrows
-        self.entry_marking.pack(side=LEFT)
+        entry_marking = Label(entry_frame, text=">>>")  # the 3 arrows
+        entry_marking.pack(side=LEFT)
 
-        self.scroll = Scrollbar(self.log_frame, orient=VERTICAL)  # scroller
-        self.scroll.pack(side=RIGHT, fill=Y, pady=5)
+        scroll = Scrollbar(log_frame, orient=VERTICAL)  # scroller
+        scroll.pack(side=RIGHT, fill=Y, pady=5)
 
         self.log = StringVar()  # holds the data for the log widow
-        self.msg_log = Listbox(self.log_frame,  # the logframe
+        self.msg_log = Listbox(log_frame,  # the logframe
                                height=30, width=100,
                                bg="white",
                                selectbackground="white",
@@ -368,12 +451,12 @@ class GUI:
                                listvariable=self.log,
                                exportselection=0,
                                highlightbackground="black",
-                               yscrollcommand=self.scroll.set)  # text thing
+                               yscrollcommand=scroll.set)  # text thing
         self.msg_log.pack(padx=5, pady=5, side=LEFT)
-        self.scroll['command'] = self.msg_log.yview
+        scroll['command'] = self.msg_log.yview
 
         self.user_input = StringVar()
-        self.entry = Entry(self.entry_frame,  # the input field
+        entry = Entry(entry_frame,  # the input field
                            width=95,
                            highlightbackground="black",
                            bg="white",
@@ -387,26 +470,26 @@ class GUI:
             # in order to allow the "self" argument to  be taken in the second slot is has to be done like this
             # TL:DR python is stupid
 
-        self.entry.bind('<Return>', entry_event_handler)  # makes enter key send message
-        self.entry.pack(padx=5, pady=5, side=LEFT)
+        entry.bind('<Return>', entry_event_handler)  # makes enter key send message
+        entry.pack(padx=5, pady=5, side=LEFT)
 
         info_keys_color = "black"
-        self.info_keys = [Label(self.info_frame, text="Server name:", fg=info_keys_color),
-                          Label(self.info_frame, text="IP:", fg=info_keys_color),
-                          Label(self.info_frame, text="Username:", fg=info_keys_color),
-                          Label(self.info_frame, text="Level:", fg=info_keys_color),]
+        info_keys = [Label(info_frame, text="Server name:", fg=info_keys_color),
+                          Label(info_frame, text="IP:", fg=info_keys_color),
+                          Label(info_frame, text="Username:", fg=info_keys_color),
+                          Label(info_frame, text="Level:", fg=info_keys_color),]
 
-        self.info_values = [Label(self.info_frame, text="placeholder", fg=info_keys_color),
-                            Label(self.info_frame, textvariable=self.chat_server, fg=info_keys_color),
-                            Label(self.info_frame, textvariable=self.username, fg=info_keys_color),
-                            Label(self.info_frame, text="placeholder", fg=info_keys_color)]
+        info_values = [Label(info_frame, text="placeholder", fg=info_keys_color),
+                            Label(info_frame, textvariable=self.chat_server, fg=info_keys_color),
+                            Label(info_frame, textvariable=self.username, fg=info_keys_color),
+                            Label(info_frame, text="placeholder", fg=info_keys_color)]
 
-        for n in range(len(self.info_keys)):
-            self.info_keys[n].grid(row=n, column=0, sticky=E)
-            self.info_values[n].grid(row=n, column=1, sticky=W)
+        for n in range(len(info_keys)):
+            info_keys[n].grid(row=n, column=0, sticky=E)
+            info_values[n].grid(row=n, column=1, sticky=W)
 
-        self.ad = Label(self.ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5)
-        self.ad.pack(padx=5, pady=5)
+        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5)
+        ad.pack(padx=5, pady=5)
 
         # TOOLBAR BUTTONS
         def conn_or_disconn():
@@ -417,11 +500,19 @@ class GUI:
 
         self.c_or_dc = StringVar()
         self.c_or_dc.set("Connect")
-        connect_butt = Button(self.toolbar_frame,
+        connect_butt = Button(toolbar_frame,
                               textvariable=self.c_or_dc,
                               command=conn_or_disconn)
-        profile_butt = Button(self.toolbar_frame, text="Profiles")
-        settings_butt = Button(self.toolbar_frame, text="Settings")
+
+        profile_butt = Menubutton(toolbar_frame,
+                                  text="Profiles",
+                                  relief=RAISED, bd=2)
+        profile_butt.menu=Menu(profile_butt, tearoff=0)
+        profile_butt.menu.add_command(label='New', command=self.new_profile)
+        profile_butt.menu.add_command(label='Edit', command=self.edit_profiles)
+        profile_butt.menu.add_command(label='Use', command=self.use_profile)
+        profile_butt['menu']=profile_butt.menu
+        settings_butt = Button(toolbar_frame, text="Settings")
 
         connect_butt.pack(side=LEFT, padx=3, pady=2)
         profile_butt.pack(side=LEFT, padx=3, pady=2)
@@ -433,8 +524,6 @@ class GUI:
         self.port = IntVar()
         self.username = StringVar()
         self.network_protocol = StringVar()
-        self.config = configparser.ConfigParser()
-        self.config.read("profiles.ini")
 
         self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
                         "/quit": self.spacer(20, "/quit") + "exit program",
@@ -447,97 +536,7 @@ class GUI:
 
         self.build_window(window)
 
-global gui_obj
-def start_gui():
-    window = Tk()  # creates the main window
-    global gui_obj
-    gui_obj = GUI(window) #make this cunt global
-    window.mainloop()
-
-def select_profile():
-    prof_sel = Tk()
-    prof_sel.title("Select Profile")
-    frame = Frame(prof_sel)
-    profile_list=["maual", "pewds h8 club"]
-    prof_sel.mainloop()
-
-gui_thread = threading.Thread(target=start_gui)
-gui_thread.start()
-
-while 1: #annars hinner inte föstret skapas innan nästa rad och då blir det error
-    try:
-        gui_obj.print_to_log(version)
-        break
-    except NameError:
-        pass
-
-chat_server=""
-port=5555
-developer_mode=0
-config = configparser.ConfigParser()
-config.read("profiles.ini")
-network_protocol=""
-
-print("Select a proile to use or select manual:")
-print("* manual")
-for n in config.sections():
-    print("*", n)
-
-profile = input(">>>")
-if profile in config.sections():
-	network_protocol = str(config[profile]["network_protocol"])
-	if network_protocol=="IPv4":
-		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	elif network_protocol=="IPv6":
-		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-	else:
-		print("Corrupt profile")
-		os._exit(1)
-
-	try:
-		port = config.getint(profile, "port")
-	except ValueError:
-		print("Corrupt profile")
-		os._exit(1)
-
-	chat_server = config.get(profile, "ip")
-	username = config.get(profile, "username")
-	developer_mode= config.getboolean(profile, "developer_mode", fallback=False)
-elif profile == "manual":
-	username = input("Enter your username:\n>>>")
-	if username == "root":  # enables client developer mode
-		developer_mode = True  # Boolean that keeps track of wether developer mode is active or not
-		print("You are now root user (admin)")
-		username = input("Username on server?\n")  # to make it possible to enable client dev mode without connecting as root
-	network_protocol = input("Enter IP protocol(IPv4 or IPv6):\n>>>")
-	if network_protocol.lower() == "ipv4":
-		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		network_protocol = "IPv4"
-	elif network_protocol.lower() == "ipv6":
-		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-		network_protocol = "IPv6"
-	chat_server=input("Enter server IP:\n>>>")
-	port = int(input("Enter port:\n>>>"))
-else: #profilen fannns inte
-	print("No such porfile:" + profile +  "\n" +
-		  "fine, fine, lemme just select \"default\" 4 u u lazy cunt")
-	profile = "default"
-	network_protocol = str(config[profile]["network_protocol"])
-	if network_protocol == "IPv4":
-		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	elif network_protocol == "IPv6":
-		s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-	else:
-		print("Corrupt profile")
-		os._exit(1)
-
-	try:
-		port = config.getint(profile, "port")
-	except ValueError:
-		print("Corrupt profile")
-		os._exit(1)
-
-	chat_server = config.get(profile, "ip")
-	username = config.get(profile, "username")
-	developer_mode = config.getboolean(profile, "developer_mode", fallback=False)
-
+print("wall")
+window = Tk()  # creates the main window
+gui_obj = GUI(window) #make this cunt global
+window.mainloop()
