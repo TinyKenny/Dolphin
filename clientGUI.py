@@ -7,83 +7,380 @@ import configparser
 import time
 
 version="Version 0.0.0.2"
+global gui_obj #make this cunt global so that it can be used in ProfileButtons
+
+class ProfileButtons:
+    index=""
+
+    def get_index(self):
+        return self.index
+
+    def __init__(self, index):
+        self.index=index
+
+    def call(self):
+        profiles = configparser.ConfigParser()
+        profiles.read("profiles.ini")
+        gui_obj.chat_server.set(profiles[self.index]["ip"])
+        gui_obj.network_protocol.set(profiles[self.index]["network_protocol"])
+        gui_obj.port.set(profiles[self.index]["port"])
+        gui_obj.username.set(profiles[self.index]["username"])
+        gui_obj.connect()
+        """
+        när man klickar på "default" så kommer knappen att ropa på element [n] i knapp listan
+        detta kommer att köra "call()"
+        call() sätter alla värden
+        call() kallar connect()
+        """
 
 class GUI:
     def spacer(self, spaces, string):
         return ((spaces - len(string)) * " ")
 
     def new_profile(self):
-        self.print_to_log("new profile")
+        new_profile_window = Tk()
+        new_profile_window.title("New Profile")
+        new_profile_window.configure(bg=self.bg_color)
 
-    def edit_profiles(self):
-        self.print_to_log("edit profile")
+        #profile name
+        Label(new_profile_window, text="Profile Name", bg=self.bg_color).grid(row=0, column=0, sticky='E')
+        name_field = Entry(new_profile_window,
+                               width=16,
+                               exportselection=0,
+                               bg="white")
+        name_field.grid(row=0, column=1, sticky='W', pady=2)
 
-    def use_profile(self):
-        use_profile_window = Tk()
-        use_profile_window.title("Select profile")
+        # username
+        Label(new_profile_window, text="Username", bg=self.bg_color).grid(row=1, column=0, sticky='E')
+        username_field = Entry(new_profile_window,
+                               width=16,
+                               exportselection=0,
+                               textvariable=self.username,
+                               bg="white")
+        username_field.grid(row=1, column=1, sticky='W', pady=2)
+        username_field.insert(END, self.username.get())
 
-        config = configparser.ConfigParser()
-        config.read("profiles.ini")
+        # ip
+        Label(new_profile_window, text="IP adresss", bg=self.bg_color).grid(row=2, column=0, sticky='E')
+        chat_server_field = Entry(new_profile_window,
+                                  width=16,
+                                  exportselection=0,
+                                  textvariable=self.chat_server,
+                                  bg="white")
+        chat_server_field.grid(row=2, column=1, pady=2)
+        chat_server_field.insert(END, self.chat_server.get())
 
-        scroll = Scrollbar(use_profile_window, orient=VERTICAL)  # scroller
-        scroll.grid(row=0, column=0, pady=3, sticky='E')
+        # port
+        Label(new_profile_window, text="Port", bg=self.bg_color).grid(row=3, column=0, sticky='E')
+        port_field = Entry(new_profile_window,
+                           width=5,
+                           exportselection=0,
+                           textvariable=self.port,
+                           bg="white")
+        port_field.grid(row=3, column=1, sticky='W', pady=2)
+        if self.port.get()==0:
+            port_field.insert(END, 5555)
+        else:
+            port_field.insert(END, self.port.get())
 
-        selections = StringVar()
+        # network protocol
+        network_protocol = StringVar()
+        def setIPv4():
+            network_protocol.set("IPv4")
+
+        def setIPv6():
+            network_protocol.set("IPv6")
+
+        network_protocol_frame = LabelFrame(new_profile_window, text="Network Protocol", bg=self.bg_color)
+        network_protocol_frame.grid(row=4, columnspan=2, pady=2)
+        ipv4_butt = Radiobutton(network_protocol_frame,
+                                text="IPv4", variable=network_protocol,
+                                value='IPv4',
+                                command=setIPv4,
+                                bg=self.bg_color)
+        ipv4_butt.grid()
+        ipv4_butt.select()
+
+        ipv6_butt = Radiobutton(network_protocol_frame,
+                                text="IPv6",
+                                variable=network_protocol,
+                                value='IPv6',
+                                command=setIPv6,
+                                bg=self.bg_color)
+        ipv6_butt.grid()
+
+        if self.network_protocol.get() == "IPv6":
+        #loads the selected network protocol
+            ipv6_butt.invoke()
+        else:
+            ipv4_butt.invoke()
 
 
-        selection_box = Listbox(use_profile_window,
-                                bg="white",
-                                width=10,
-                                height=5,
-                                selectmode=SINGLE,
-                                exportselection=0,
-                                yscrollcommand=scroll.set,
-                                listvariable=selections,#FUCKING BS PYTHON IGNORES THIS LINE
-                                activestyle=NONE)
-        scroll['command'] = selection_box.yview
-        selection_box.grid(row=0, column=1, sticky='W')
+        # buttons frame
+        def cancel():
+            new_profile_window.destroy()
 
-        selection_box.insert(END, "Manual")
-        selections_list = []
-        for sel in config.sections():
-            selection_box.insert(END, sel)
-            selections_list.append(sel)
+        def create():
+            if (name_field.get()=="") | (chat_server_field.get()=="") | (port_field.get()==0) | (network_protocol.get()=="") | (username_field.get()==""):
+                #ensures that no field is empty
+                return 0
+            profiles = configparser.ConfigParser()
+            profiles.read("profiles.ini")
+            profiles.add_section(name_field.get())
+            profiles.set(name_field.get(), "ip", chat_server_field.get())
+            profiles.set(name_field.get(), "port", port_field.get())
+            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar
+            profiles.set(name_field.get(), "username", username_field.get())
+
+            try:
+                with open('profiles.ini', 'w') as new_configfile:
+                    profiles.write(new_configfile)
+                    self.add_profile_to_butt_cascade(name_field.get())
+                    tkinter.messagebox.showinfo("Saved", "Saved Successfully")
+            except:
+                tkinter.messagebox.showerror("Error", "Could not save")
+
+
+            new_profile_window.destroy()
+
+        butt_frame = Frame(new_profile_window, bg=self.bg_color)
+        butt_frame.grid(row=5, columnspan=2, pady=4)
+        connect_butt = Button(butt_frame,
+                              text="Save",
+                              fg='#86FF59',
+                              activeforeground='green',
+                              command=create,
+                              bg=self.butt_color,
+                              activebackground=self.active_butt_color)
+        cancel_butt = Button(butt_frame,
+                             text="Cancel",
+                             fg='#FA4854',
+                             activeforeground='red',
+                             command=cancel,
+                             bg=self.butt_color,
+                             activebackground=self.active_butt_color)
+        connect_butt.pack(side=LEFT, padx=5)
+        cancel_butt.pack(side=RIGHT)
+
+        new_profile_window.mainloop()
+
+    def edit_specific_profile(self, profile_name, username, ip, port, network_protocol_string):
+        new_profile_window = Tk()
+        new_profile_window.title("Edit Profile")
+        new_profile_window.configure(bg=self.bg_color)
+
+        #profile name
+        Label(new_profile_window, text="Profile Name", bg=self.bg_color).grid(row=0, column=0, sticky='E')
+        name_field = Entry(new_profile_window,
+                           width=16,
+                           exportselection=0,
+                           bg="white")
+        name_field.grid(row=0, column=1, sticky='W', pady=2)
+        name_field.insert(END, profile_name)
+
+        # username
+        Label(new_profile_window, text="Username", bg=self.bg_color).grid(row=1, column=0, sticky='E')
+        username_field = Entry(new_profile_window,
+                               width=16,
+                               exportselection=0,
+                               textvariable=self.username,
+                               bg="white")
+        username_field.grid(row=1, column=1, sticky='W', pady=2)
+        username_field.insert(END, username)
+
+        # ip
+        Label(new_profile_window, text="IP adresss", bg=self.bg_color).grid(row=2, column=0, sticky='E')
+        chat_server_field = Entry(new_profile_window,
+                                  width=16,
+                                  exportselection=0,
+                                  textvariable=self.chat_server,
+                                  bg="white")
+        chat_server_field.grid(row=2, column=1, pady=2)
+        chat_server_field.insert(END, ip)
+
+        # port
+        Label(new_profile_window, text="Port", bg=self.bg_color).grid(row=3, column=0, sticky='E')
+        port_field = Entry(new_profile_window,
+                           width=5,
+                           exportselection=0,
+                           textvariable=self.port,
+                           bg="white")
+        port_field.grid(row=3, column=1, sticky='W', pady=2)
+        if self.port.get()==0:
+            port_field.insert(END, 5555)
+        else:
+            port_field.insert(END, port)
+
+        # network protocol
+        network_protocol = StringVar()
+        def setIPv4():
+            network_protocol.set("IPv4")
+
+        def setIPv6():
+            network_protocol.set("IPv6")
+
+        network_protocol_frame = LabelFrame(new_profile_window, text="Network Protocol", bg=self.bg_color)
+        network_protocol_frame.grid(row=4, columnspan=2, pady=2)
+        ipv4_butt = Radiobutton(network_protocol_frame,
+                                text="IPv4", variable=network_protocol,
+                                value='IPv4',
+                                command=setIPv4,
+                                bg=self.bg_color)
+        ipv4_butt.grid()
+        ipv4_butt.select()
+
+        ipv6_butt = Radiobutton(network_protocol_frame,
+                                text="IPv6",
+                                variable=network_protocol,
+                                value='IPv6',
+                                command=setIPv6,
+                                bg=self.bg_color)
+        ipv6_butt.grid()
+
+        if network_protocol_string == "IPv6":
+        #loads the selected network protocol
+            ipv6_butt.invoke()
+        else:
+            ipv4_butt.invoke()
 
         # buttons
         def cancel():
-            use_profile_window.destroy()
+            new_profile_window.destroy()
 
-        def connect():
-            if str(selection_box.curselection()) == "()":
+        def create():
+            if (name_field.get()=="") | (chat_server_field.get()=="") | (port_field.get()==0) | (network_protocol.get()=="") | (username_field.get()==""):
                 return 0
-            elif str(selection_box.curselection()) == "(0,)":
-                use_profile_window.destroy()
-            else:
-                selected_profile = selections_list[int(str(selection_box.curselection())[1:-2]) - 1]
-                print(type(selected_profile))
-                self.username.set(config[selected_profile]["username"])
-                self.port.set(config[selected_profile]["port"])
-                self.chat_server.set(config[selected_profile]["ip"])
-                self.network_protocol.set(config[selected_profile]["network_protocol"])
-                use_profile_window.destroy()
-                self.connect()
+                #ensures that no field is empty
+            profiles = configparser.ConfigParser()
+            profiles.read("profiles.ini")
+            profiles.add_section(name_field.get())
+            profiles.set(name_field.get(), "ip", chat_server_field.get())
+            profiles.set(name_field.get(), "port", port_field.get())
+            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar
+            profiles.set(name_field.get(), "username", username_field.get())
 
-        butt_frame = Frame(use_profile_window)
-        butt_frame.grid(row=1, columnspan=2, pady=4, padx=4)
+            try:
+                with open('profiles.ini', 'w') as new_configfile:
+                    profiles.write(new_configfile)
+                    self.add_profile_to_butt_cascade(name_field.get())
+                    tkinter.messagebox.showinfo("Saved", "Saved Successfully")
+            except:
+                tkinter.messagebox.showerror("Error", "Could not save")
+            new_profile_window.destroy()
+
+        butt_frame = Frame(new_profile_window, bg=self.bg_color)
+        butt_frame.grid(row=5, columnspan=2, pady=4)
         connect_butt = Button(butt_frame,
-                              text="Connect",
-                              fg='green',
+                              text="Save",
+                              fg='#86FF59',
                               activeforeground='green',
-                              command=connect)
+                              command=create,
+                              bg=self.butt_color,
+                              activebackground=self.active_butt_color)
         cancel_butt = Button(butt_frame,
                              text="Cancel",
-                             fg='red',
+                             fg='#FA4854',
                              activeforeground='red',
-                             command=cancel)
-        connect_butt.pack(side=LEFT, padx=2)
+                             command=cancel,
+                             bg=self.butt_color,
+                             activebackground=self.active_butt_color)
+        connect_butt.pack(side=LEFT, padx=5)
         cancel_butt.pack(side=RIGHT)
 
-        use_profile_window.mainloop()
+        new_profile_window.mainloop()
+
+    def edit_profiles(self):
+        edit_profile_window=Tk()
+        edit_profile_window.title("Edit Profile")
+        edit_profile_window.configure(bg=self.bg_color)
+
+        profiles_var=StringVar()
+        select_profile=Listbox(edit_profile_window,
+                               height=10, width=15,
+                               bg="white",
+                               selectmode=SINGLE,
+                               activestyle=NONE,
+                               listvariable=profiles_var,
+                               exportselection=0,
+                               highlightbackground="black")
+
+        profiles = configparser.ConfigParser()
+        profiles.read("profiles.ini")
+
+        for n in profiles.sections():
+            select_profile.insert(END, n)
+        select_profile.pack(side=LEFT, padx=3, pady=3)
+
+        the_rest_frame=Frame(edit_profile_window, bg=self.bg_color)
+        the_rest_frame.pack(side=RIGHT, padx=3, pady=3)
+
+        info_frame=LabelFrame(the_rest_frame, text="Info", bg=self.bg_color)
+        info_frame.pack(pady=3)
+
+        test=Label(info_frame, text="cunt")
+        test.grid(pady=3)
+
+        def new():
+            edit_profile_window.destroy()
+            self.new_profile()
+
+        def edit():
+            profile_to_be_edited=profiles.sections()[select_profile.curselection()[0]]
+            username = profiles.get(profile_to_be_edited, "username")
+            ip = profiles.get(profile_to_be_edited, "ip")
+            port = profiles.get(profile_to_be_edited, "port")
+            network_protocol = profiles.get(profile_to_be_edited, "network_protocol")
+            #mellanlagring är endast för att det ska bli lättare att skriva/läsa
+
+            delete()
+            edit_profile_window.destroy()
+            self.edit_specific_profile(profile_to_be_edited, username, ip, port, network_protocol)
+
+        def delete():
+            profiles.remove_section(profiles.sections()[select_profile.curselection()[0]])
+            select_profile.delete(select_profile.curselection()[0])
+            select_profile.update()# vet ej vad denna gör men kan ej skada
+            profiles.update()# vet ej vad denna gör men kan ej skada
+            self.remove_profile_from_butt_cascade()
+
+            with open('profiles.ini', 'w') as new_configfile:
+                profiles.write(new_configfile)
+
+
+        new_butt=Button(the_rest_frame,
+                        text="New",
+                        width=6,
+                        fg='white',
+                        activeforeground='white',
+                        command=new,
+                        bg=self.butt_color,
+                        activebackground=self.active_butt_color)
+        new_butt.pack(pady=3)
+
+        edit_butt=Button(the_rest_frame,
+                         text="Edit",
+                         width=6,
+                         fg='white',
+                         activeforeground='white',
+                         command=edit,
+                         bg=self.butt_color,
+                         activebackground=self.active_butt_color)
+        edit_butt.pack(pady=3)
+
+        delete_butt = Button(the_rest_frame,
+                             text="Delete",
+                             fg='white',
+                             width=6,
+                             activeforeground='white',
+                             command=delete,
+                             bg=self.butt_color,
+                             activebackground=self.active_butt_color)
+        delete_butt.pack(pady=3)
+
+        #knappar: Edit, Delete, New
+        #rutor: select, info
+
+        edit_profile_window.mainloop()
 
     def command_interpreter(self, client_message):
         if client_message == "/quit":
@@ -267,7 +564,8 @@ class GUI:
             self.chat_server.set('')
         except OSError as e:
             self.print_to_log(e)
-            if str(e)[0:11]=="[Errno 107]":
+            print(str(e)[0:16])
+            if (str(e)[0:11]=="[Errno 107]") | (str(e)[0:16]=="[WinError 10057]"):
                 self.print_to_log("Please check if server is running")
 
     def print_to_log(self, msg):
@@ -416,7 +714,7 @@ class GUI:
             self.print_to_log("Message of the day: " + str(data.decode('utf-8')))  # currently just a random quote
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
         except socket.error as e:  # couldn't connect to given IP + port
-            self.print_to_log(("Cound not connect to" + self.chat_server.get() + ":" + str(self.port.get())))
+            self.print_to_log(("Cound not connect to " + self.chat_server.get() + ":" + str(self.port.get())))
             self.print_to_log(str(e))
 
         reciever = threading.Thread(target=self.recieve_messages, daemon=0)
@@ -530,7 +828,7 @@ class GUI:
                               fg=butt_fg_color,
                               activebackground=self.active_butt_color)
 
-        profile_butt = Menubutton(toolbar_frame,
+        self.profile_butt = Menubutton(toolbar_frame,
                                   text="Profiles",
                                   relief=RAISED,
                                   bd=2,
@@ -538,17 +836,32 @@ class GUI:
                                   bg=self.butt_color,
                                   fg=butt_fg_color,
                                   activebackground=self.active_butt_color)
-        profile_butt.menu=Menu(profile_butt,
+        self.profile_butt.menu=Menu(self.profile_butt,
                                bd=2,
                                tearoff=0,
                                bg=self.butt_color,
                                fg=butt_fg_color,
                                activebackground=self.active_butt_color)
 
-        profile_butt.menu.add_command(label='New', command=self.new_profile)
-        profile_butt.menu.add_command(label='Edit', command=self.edit_profiles)
-        profile_butt.menu.add_command(label='Use', command=self.use_profile)
-        profile_butt['menu']=profile_butt.menu
+        def new_profile():
+            #by starting this in a new thread you will be able to recive messages while creating profiles
+            #TODO: prevent multiple new_profile() threads using enumerate()
+            new_profile_thread = threading.Thread(target=self.new_profile, daemon=1)
+            new_profile_thread.start()
+
+        self.profile_butt['menu']=self.profile_butt.menu
+        self.profile_butt.menu.add_command(label='New', command=new_profile)
+        self.profile_butt.menu.add_command(label='Edit', command=self.edit_profiles)
+        self.profile_butt.menu.add_separator()
+
+        #adds the pre-existing profiles
+        profiles = configparser.ConfigParser()
+        profiles.read("profiles.ini")
+        
+        for label in profiles.sections():
+            self.add_profile_to_butt_cascade(label)
+        #done adding the pre-existing profiles
+
         settings_butt = Button(toolbar_frame,
                                text="Settings",
                                height=2,
@@ -558,8 +871,15 @@ class GUI:
                                activebackground=self.active_butt_color)
 
         connect_butt.pack(side=LEFT, padx=3, pady=2)
-        profile_butt.pack(side=LEFT, padx=3, pady=2)
+        self.profile_butt.pack(side=LEFT, padx=3, pady=2)
         settings_butt.pack(side=LEFT, padx=3, pady=2)
+
+    def remove_profile_from_butt_cascade(self):
+        self.print_to_log("not implemented  yet")
+
+    def add_profile_to_butt_cascade(self, label):
+        self.profile_button_selections[0]=ProfileButtons(label)
+        self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[0].call)
 
     def __init__(self, window):
 
@@ -567,6 +887,14 @@ class GUI:
         self.port = IntVar()
         self.username = StringVar()
         self.network_protocol = StringVar()
+        self.profile_button_selections=[]
+
+        #for n in range(128):
+        for n in range(10):
+            #creates 128 empty emelents in the list
+            #this number should be constant
+            #later we will add ProfileButton objects in the slots
+            self.profile_button_selections.append(None)
 
         self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
                         "/quit": self.spacer(20, "/quit") + "exit program",
@@ -579,7 +907,7 @@ class GUI:
 
         self.build_window(window)
 
-print("wall")
 window = Tk()  # creates the main window
-gui_obj = GUI(window) #make this cunt global
+
+gui_obj = GUI(window)
 window.mainloop()
