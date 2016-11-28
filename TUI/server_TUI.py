@@ -5,7 +5,6 @@ import os
 import time
 import datetime
 import configparser
-#import logging
 from unicurses import *
 from sys import platform
 
@@ -21,12 +20,13 @@ def clientHandler(sock):
                               "You can fight by my side anytime, Gaurdian",
                               "Is english class canceld tomorrow?",
 							  "Livet är inte optimalt.",
-							  "Show your support! Purchase Dolphin Pro - Premium edition today!"]
+							  "Show your support! Purchase Dolphin Pro - Premium edition today!",
+							  "Skolan måste vara tråkig, annars jobbar man inte."]
 	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
 	username = (sock.recv(2048)).decode("utf-8")
 	raddr = getRaddr(sock)
 	
-	if username in taken_usernames or username.lower() == "server announcement":
+	if username in taken_usernames or username.lower() == "server announcement" or username.lower() == "server announcement:":
 		sock.send(str.encode("That username is already taken."))
 		waddstr(logwin,"\nDisconnected from "+raddr)
 		wrefresh(logwin)
@@ -91,9 +91,12 @@ def interpret_commands(conn, username):
 	global taken_usernames, help, root_help, root_pass, logwin
 	if taken_usernames[username]: #root commands
 		if cmh.common_message==username+":/terminate":
-			waddstr(logwin,"\nTerminating server.")
+			waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
+			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+				chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
 			wrefresh(logwin)
 			s.close()
+			return("")
 		elif cmh.common_message==username+":/users -show":
 			users=cmh.common_message+"\nCurrently connected users:"
 			for u in taken_usernames:
@@ -104,11 +107,11 @@ def interpret_commands(conn, username):
 			return("")
 		elif cmh.common_message.startswith(username+":/kick "):
 			if cmh.common_message[len(username+":/kick "):] not in taken_usernames:
-				if taken_usernames[username]:
-					return(cmh.common_message+"\nYou can't kick that user.")
-				else:
-					conn.send(str.encode(cmh.common_message+"\nThat user is not connected."))
-					return("")
+				conn.send(str.encode(cmh.common_message+"\nThat user is not connected."))
+				return("")
+			elif taken_usernames[username]:
+				conn.send(str.encode(cmh.common_message+"\nYou can't kick that user."))
+				return("")
 	elif cmh.common_message==username+":/root "+root_pass:
 		taken_usernames[username]=True
 		conn.send(str.encode("You have admin rights!"))
@@ -121,7 +124,7 @@ def interpret_commands(conn, username):
 			conn.send(str.encode(help))
 			return("")
 	elif cmh.common_message.startswith(username+":/me"):
-		return (username+cmh.common_message[len(username+":/me"):])
+		return (time.strftime("[%H:%M:%S] ")+username+cmh.common_message[len(username+":/me"):])
 	return(cmh.common_message)
 
 def listenToClient(conn, username):
@@ -131,34 +134,42 @@ def listenToClient(conn, username):
 		raddr=getRaddr(conn)
 	except:
 		raddr = getRaddr(conn)
-	cmh.common_message = username + " connected"
+	cmh.common_message = time.strftime("[%H:%M:%S] ")+ username + " connected"
 	thread_manager.acquire()
 	thread_manager.notify_all()
 	thread_manager.release()
 	while True:
 		try:
-			cmh.common_message = username + ":" + (conn.recv(2048)).decode("utf-8")
+			cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + (conn.recv(2048)).decode("utf-8")
 			waddstr(logwin, "\n"+cmh.common_message)
 			wrefresh(logwin)
 			if cmh.common_message.startswith(username+":/"): #commands
 				cmh.common_message = interpret_commands(conn, username)
+			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+				chatlog.write("\n"+cmh.common_message)
 			thread_manager.acquire() #hämtar managern
 			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
 			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
 		except ConnectionResetError:
-			cmh.common_message= str(username) + " disconnected"
+			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
+			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+				chatlog.write("\n"+cmh.common_message)
 			thread_manager.acquire()
 			thread_manager.notify_all()
 			thread_manager.release()
 			break
 		except BrokenPipeError:
-			cmh.common_message= str(username) + " disconnected"
+			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
+			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+				chatlog.write("\n"+cmh.common_message)
 			thread_manager.acquire()
 			thread_manager.notify_all()
 			thread_manager.release()
 			break
 		except ConnectionAbortedError:
-			cmh.common_message= str(username) + " was kicked"
+			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " was kicked"
+			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+				chatlog.write("\n"+cmh.common_message)
 			thread_manager.acquire()
 			thread_manager.notify_all()
 			thread_manager.release()
@@ -341,14 +352,17 @@ def server_input():
 		server_message = wgetstr(inpwin)
 		werase(inpwin)
 		wrefresh(inpwin)
-		cmh.common_message=username+":"+server_message
+		cmh.common_message=time.strftime("[%H:%M:%S] ")+username+":"+server_message
 		waddstr(logwin,"\n"+cmh.common_message)
 		wrefresh(logwin)
 		if server_message.startswith("/"): #A lightweight, slightly modified verision of interpret_commands.
 			if server_message == "/terminate":
-				waddstr(logwin,"\nTerminating server.")
+				waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
+				with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+					chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
 				wrefresh(logwin)
 				s.close()
+				break
 			elif server_message == "/users -show":
 				users = "\nCurrently connected users:"
 				for u in taken_usernames:
@@ -369,7 +383,7 @@ def server_input():
 				waddstr(logwin,"\n"+help+root_help+server_help)
 				wrefresh(logwin)
 			elif server_message.startswith("/me"):
-				cmh.common_message=username+server_message[len("/me"):]
+				cmh.common_message=time.strftime("[%H:%M:%S] ")+username+server_message[len("/me"):]
 				waddstr(logwin,"\n"+cmh.common_message)
 				wrefresh(logwin)
 			elif server_message.startswith("/promote "):
@@ -383,34 +397,43 @@ def server_input():
 					cmh.common_message=""
 				else:
 					taken_usernames[server_message[len("/promote "):]]=True
-					waddstr(logwin,"\nServer Announcement: "+server_message[len("/promote "):]+" has been promoted.")
+					waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Server Announcement: "+server_message[len("/promote "):]+" has been promoted.")
 					wrefresh(logwin)
-					cmh.common_message="Server Announcement: "+server_message[len("/promote "):]+" has been promoted."
+					cmh.common_message=time.strftime("[%H:%M:%S] ")+"Server Announcement: "+server_message[len("/promote "):]+" has been promoted."
 			elif server_message.startswith("/demote "):
 				if server_message[len("/demote "):] not in taken_usernames:
 					waddstr(logwin,"\nThat user is not connected.")
 					wrefresh(logwin)
 					cmh.common_message=""
-				elif not taken_usernames[server_message[len("/promote "):]]:
+				elif not taken_usernames[server_message[len("/demote "):]]:
 					waddstr(logwin,"\nThat user doesn't have admin rights!")
 					wrefresh(logwin)
 					cmh.common_message=""
 				else:
-					taken_usernames[server_message[len("/promote "):]]=False
-					waddstr(logwin,"\nServer Announcement: "+server_message[len("/promote "):]+" has been demoted.")
+					taken_usernames[server_message[len("/demote "):]]=False
+					waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Server Announcement: "+server_message[len("/demote "):]+" has been demoted.")
 					wrefresh(logwin)
-					cmh.common_message="Server Announcement: "+server_message[len("/promote "):]+" has been demoted."
+					cmh.common_message=time.strftime("[%H:%M:%S] ")+"Server Announcement: "+server_message[len("/demote "):]+" has been demoted."
+		with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+			chatlog.write("\n"+cmh.common_message)
 		thread_manager.acquire()
 		thread_manager.notify_all()
 		thread_manager.release()
 
-#logging.basicConfig(filename=str(datetime.date.today())+".log",format="%(asctime)s %(levelname)s:%(message)s" , level=logging.DEBUG)
-#logging.debug("Server started.")
-
+if not os.path.exists("./serverlogs"):
+	os.makedirs("./serverlogs")
+	os.makedirs("./serverlogs/debug")
+	os.makedirs("./serverlogs/chatlogs")
+else:
+	if not os.path.exists("./serverlogs/debug"):
+		os.makedirs("./serverlogs/debug")
+	if not os.path.exists("./serverlogs/chatlogs"):
+		os.makedirs("./serverlogs/chatlogs")
+with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+	chatlog.write("Server started.")
 
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
-
 elif platform == "linux":
 	os.system("set noglob; setenv COLUMNS '90'; setenv LINES '30'; unset noglob")
 
@@ -419,8 +442,9 @@ HEIGHT = 10
 config = configparser.ConfigParser()
 config.read("config_server.ini")
 choices = config.sections()
-choices.append("New")
-choices.append("Manual")
+if len(choices) < 5:
+	choices.append("New")
+choices.append("Temp. profile")
 n_choices = len(choices)
 highlight = 1
 profile = 0
@@ -436,8 +460,10 @@ starty = int((30 - HEIGHT) / 2)
 
 prof_select_win = newwin(HEIGHT, WIDTH, starty, startx)
 keypad(prof_select_win, True)
-mvaddstr(0, 0, "Select a pre-existing configuration profile, or create a new profile")
-mvaddstr(1, 0, "Use arrow keys navigate, press enter to select")
+mvaddstr(0, 0, "Use the arrow keys to navigate, press enter to select.")
+mvaddstr(1, 0, "Select a pre-existing configuration profile, or create a new profile")
+mvaddstr(2, 0, 'Select "Temp. profile" to make a new profile, without saving it')
+
 refresh()
 print_menu(prof_select_win, highlight)
 
@@ -464,7 +490,6 @@ while True:
 		refresh()
 	print_menu(prof_select_win, highlight)
 destroy_win(prof_select_win)
-#logging.debug("Profile selected.")
 clear()
 echo()
 curs_set(1)
@@ -478,8 +503,7 @@ else:
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-#logging.debug("Settings loaded.")
-version="0.0.1.0"
+version="0.1.0.0"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
@@ -528,10 +552,8 @@ refresh()
 
 try:
 	s.bind((host,port))
-	#logging.debug("Bound to: "+host+str(port))
 except socket.error as e:
 	waddstr(logwin,"Failed to bind\n"+e)
-	#logging.critical("Failed to bind\n"+e)
 	wrefresh(logwin)
 	getch()
 	endwin()
