@@ -10,21 +10,24 @@ version="Version 0.0.0.2"
 global gui_obj #make this cunt global so that it can be used in ProfileButtons
 
 class ProfileButtons:
-    index=""
+    index=-1
+    label=""
 
     def get_index(self):
         return self.index
 
-    def __init__(self, index):
+    def __init__(self, index, label):
         self.index=index
+        self.label=label
+
 
     def call(self):
         profiles = configparser.ConfigParser()
         profiles.read("profiles.ini")
-        gui_obj.chat_server.set(profiles[self.index]["ip"])
-        gui_obj.network_protocol.set(profiles[self.index]["network_protocol"])
-        gui_obj.port.set(profiles[self.index]["port"])
-        gui_obj.username.set(profiles[self.index]["username"])
+        gui_obj.chat_server.set(profiles[self.label]["ip"])
+        gui_obj.network_protocol.set(profiles[self.label]["network_protocol"])
+        gui_obj.port.set(profiles[self.label]["port"])
+        gui_obj.username.set(profiles[self.label]["username"])
         gui_obj.connect()
         """
         när man klickar på "default" så kommer knappen att ropa på element [n] i knapp listan
@@ -325,7 +328,11 @@ class GUI:
             self.new_profile()
 
         def edit():
-            profile_to_be_edited=profiles.sections()[select_profile.curselection()[0]]
+            try:
+                profile_to_be_edited = profiles.sections()[select_profile.curselection()[0]]
+            except IndexError:
+                return 0
+                #nothing was selected
             username = profiles.get(profile_to_be_edited, "username")
             ip = profiles.get(profile_to_be_edited, "ip")
             port = profiles.get(profile_to_be_edited, "port")
@@ -337,11 +344,17 @@ class GUI:
             self.edit_specific_profile(profile_to_be_edited, username, ip, port, network_protocol)
 
         def delete():
-            profiles.remove_section(profiles.sections()[select_profile.curselection()[0]])
-            select_profile.delete(select_profile.curselection()[0])
-            select_profile.update()# vet ej vad denna gör men kan ej skada
+            try:
+                label=profiles.sections()[select_profile.curselection()[0]]
+            except IndexError:
+                return 0
+                #nothing was selected
+            profiles.remove_section(label)
+
             profiles.update()# vet ej vad denna gör men kan ej skada
-            self.remove_profile_from_butt_cascade()
+            self.remove_profile_from_butt_cascade(label)
+            select_profile.delete(select_profile.curselection()[0])
+            select_profile.update()  # vet ej vad denna gör men kan ej skada
 
             with open('profiles.ini', 'w') as new_configfile:
                 profiles.write(new_configfile)
@@ -653,10 +666,7 @@ class GUI:
             connet_window.destroy()
 
         def connect():
-            ''''print(self.username.get())
-            print(self.network_protocol.get())
-            print(self.chat_server.get())
-            print(self.port.get())'''
+
             if self.chat_server.get()=="":
                 self.username.set("bob")
                 self.port.set(5555)
@@ -812,7 +822,10 @@ class GUI:
 
         def conn_or_disconn():
             if self.c_or_dc.get() == "Connect":
-                manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1)
+                for thread in threading.enumerate():
+                    if str(thread)[0:15] == "<Thread(connect":
+                        return 0
+                manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1, name="connect")
                 manual_conn_thread.start()
             elif self.c_or_dc.get() == "Disconnect":
                 self.disconnect()
@@ -845,13 +858,22 @@ class GUI:
 
         def new_profile():
             #by starting this in a new thread you will be able to recive messages while creating profiles
-            #TODO: prevent multiple new_profile() threads using enumerate()
-            new_profile_thread = threading.Thread(target=self.new_profile, daemon=1)
+            for thread in threading.enumerate():
+                if str(thread)[0:19]=="<Thread(new_profile":
+                    return 0
+            new_profile_thread = threading.Thread(target=self.new_profile, daemon=1, name="new_profile")
             new_profile_thread.start()
+
+        def edit_profile():
+            for thread in threading.enumerate():
+                if str(thread)[0:20]=="<Thread(edit_profile":
+                    return 0
+            edit_profile_thread = threading.Thread(target=self.edit_profiles, daemon=1, name="edit_profile")
+            edit_profile_thread.start()
 
         self.profile_butt['menu']=self.profile_butt.menu
         self.profile_butt.menu.add_command(label='New', command=new_profile)
-        self.profile_butt.menu.add_command(label='Edit', command=self.edit_profiles)
+        self.profile_butt.menu.add_command(label='Edit', command=edit_profile)
         self.profile_butt.menu.add_separator()
 
         #adds the pre-existing profiles
@@ -874,12 +896,27 @@ class GUI:
         self.profile_butt.pack(side=LEFT, padx=3, pady=2)
         settings_butt.pack(side=LEFT, padx=3, pady=2)
 
-    def remove_profile_from_butt_cascade(self):
-        self.print_to_log("not implemented  yet")
+    def remove_profile_from_butt_cascade(self, label):
+        menu_index=3
+        for n in range(len(self.profile_button_selections)):
+            try:
+                if self.profile_button_selections[n].label == label:
+                    self.profile_butt.menu.delete(menu_index)
+                    self.profile_button_selections[n]=None
+                    break
+                else:
+                    #objektet hade attributet label men det var inte rätt
+                    menu_index +=1
+            except AttributeError:
+                pass
+                #objektet var None och har därför tagigts bort
+                #detta innebär att alla element "under" (grafiskt) i menyn har flyttats ett steg upp(grafiskt) eller ett steg ner i dess index
+                #för att kompensera för detta så ökar INTE menu_index.
 
     def add_profile_to_butt_cascade(self, label):
-        self.profile_button_selections[0]=ProfileButtons(label)
-        self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[0].call)
+        n=len(self.profile_button_selections)
+        self.profile_button_selections.append(ProfileButtons(n, label))
+        self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[n].call)
 
     def __init__(self, window):
 
@@ -889,12 +926,12 @@ class GUI:
         self.network_protocol = StringVar()
         self.profile_button_selections=[]
 
-        #for n in range(128):
+        '''for n in range(128):
         for n in range(10):
             #creates 128 empty emelents in the list
             #this number should be constant
             #later we will add ProfileButton objects in the slots
-            self.profile_button_selections.append(None)
+            self.profile_button_selections.append(None)'''
 
         self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
                         "/quit": self.spacer(20, "/quit") + "exit program",
