@@ -21,7 +21,6 @@ class ProfileButtons:
         self.index=index
         self.label=label
 
-
     def call(self):
         profiles = configparser.ConfigParser()
         profiles.read("profiles.ini")
@@ -597,11 +596,12 @@ class GUI:
 
         def connect():
 
-            if self.chat_server.get()=="":
+            if chat_server_field.get()=="":
                 self.username.set("bob")
                 self.port.set(5555)
                 self.chat_server.set("127.0.0.1")
                 ipv4_butt.invoke() #sätter IPv4
+                self.print_to_log("Invalid input: Connecting to localhost instead")
             else:
                 self.username.set(username_field.get())
                 #network protocol is alredy set
@@ -655,6 +655,7 @@ class GUI:
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
         except socket.error as e:  # couldn't connect to given IP + port
             self.print_to_log(("Cound not connect to " + self.chat_server.get() + ":" + str(self.port.get())))
+            self.c_or_dc.set("Connect")
             if self.show_errors:
                 self.print_to_log(str(e))
 
