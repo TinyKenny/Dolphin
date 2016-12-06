@@ -1,4 +1,5 @@
 import tkinter.messagebox
+from tkinter import font
 from tkinter import *
 import socket
 import os
@@ -6,7 +7,7 @@ import threading
 import configparser
 import time
 
-version="Version 0.0.0.2"
+version="Version 0.0.1.0 ALPHA"
 global gui_obj #make this cunt global so that it can be used in ProfileButtons
 
 class ProfileButtons:
@@ -46,11 +47,13 @@ class GUI:
         new_profile_window.configure(bg=self.bg_color)
 
         #profile name
-        Label(new_profile_window, text="Profile Name", bg=self.bg_color).grid(row=0, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Profile Name",
+              bg=self.bg_color).grid(row=0, column=0, sticky='E')
         name_field = Entry(new_profile_window,
-                               width=16,
-                               exportselection=0,
-                               bg="white")
+                           width=16,
+                           exportselection=0,
+                           bg="white")
         name_field.grid(row=0, column=1, sticky='W', pady=2)
 
         # username
@@ -94,7 +97,9 @@ class GUI:
         def setIPv6():
             network_protocol.set("IPv6")
 
-        network_protocol_frame = LabelFrame(new_profile_window, text="Network Protocol", bg=self.bg_color)
+        network_protocol_frame = LabelFrame(new_profile_window,
+                                            text="Network Protocol",
+                                            bg=self.bg_color)
         network_protocol_frame.grid(row=4, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
                                 text="IPv4", variable=network_protocol,
@@ -222,7 +227,9 @@ class GUI:
         def setIPv6():
             network_protocol.set("IPv6")
 
-        network_protocol_frame = LabelFrame(new_profile_window, text="Network Protocol", bg=self.bg_color)
+        network_protocol_frame = LabelFrame(new_profile_window,
+                                            text="Network Protocol",
+                                            bg=self.bg_color)
         network_protocol_frame.grid(row=4, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
                                 text="IPv4", variable=network_protocol,
@@ -249,17 +256,23 @@ class GUI:
         # buttons
         def cancel():
             new_profile_window.destroy()
+            #needs to add the profile again since it was deleted
 
-        def create():
+        def save():
             if (name_field.get()=="") | (chat_server_field.get()=="") | (port_field.get()==0) | (network_protocol.get()=="") | (username_field.get()==""):
                 return 0
                 #ensures that no field is empty
+
             profiles = configparser.ConfigParser()
             profiles.read("profiles.ini")
+
+            self.remove_profile_from_butt_cascade(profile_name)#removes the old version
+            profiles.remove_section(profile_name)#same
+
             profiles.add_section(name_field.get())
             profiles.set(name_field.get(), "ip", chat_server_field.get())
             profiles.set(name_field.get(), "port", port_field.get())
-            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar
+            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar, not an Entry object
             profiles.set(name_field.get(), "username", username_field.get())
 
             try:
@@ -277,7 +290,7 @@ class GUI:
                               text="Save",
                               fg='#86FF59',
                               activeforeground='green',
-                              command=create,
+                              command=save,
                               bg=self.butt_color,
                               activebackground=self.active_butt_color)
         cancel_butt = Button(butt_frame,
@@ -320,7 +333,7 @@ class GUI:
         info_frame=LabelFrame(the_rest_frame, text="Info", bg=self.bg_color)
         info_frame.pack(pady=3)
 
-        test=Label(info_frame, text="cunt")
+        test=Label(info_frame, text="Comming soon...", bg=self.bg_color)
         test.grid(pady=3)
 
         def new():
@@ -339,7 +352,7 @@ class GUI:
             network_protocol = profiles.get(profile_to_be_edited, "network_protocol")
             #mellanlagring är endast för att det ska bli lättare att skriva/läsa
 
-            delete()
+            #delete()
             edit_profile_window.destroy()
             self.edit_specific_profile(profile_to_be_edited, username, ip, port, network_protocol)
 
@@ -358,7 +371,6 @@ class GUI:
 
             with open('profiles.ini', 'w') as new_configfile:
                 profiles.write(new_configfile)
-
 
         new_butt=Button(the_rest_frame,
                         text="New",
@@ -395,172 +407,90 @@ class GUI:
 
         edit_profile_window.mainloop()
 
+    def settings(self):
+        self.print_to_log("Not implemented yet")
+        return 0
+
+        settings_window = Tk()
+        settings_window.title("Settings")
+        settings_window.config(bg=self.bg_color)
+
+        settings = configparser.ConfigParser()
+        settings.read("settings.ini")
+
+        show_errors_var = StringVar()
+
+        show_errors_checkbox = Checkbutton(settings_window,
+                                           text="Show error messages",
+                                           bg=self.bg_color,
+                                           activebackground=self.bg_color,
+                                           variable=show_errors_var)
+        show_errors_checkbox.pack()
+
+        if settings.get("DEFAULT", "show_errors") == "True":
+            show_errors_checkbox.select()
+        elif settings.get("DEFAULT", "show_errors") == "False":
+            show_errors_checkbox.deselect()
+        else:
+            tkinter.messagebox.showerror("Error", "Corrupt Settings file")
+            settings_window.destroy()
+            return 0
+
+        def save():
+            print(":",show_errors_var.get(),":")
+            if show_errors_var.get() == "1":
+                settings.set("DEFAULT", "show_errors", "True")
+                self.show_errors=True
+            else:
+                settings.set("DEFAULT", "show_errors", "False")
+                self.show_errors=False
+
+            try:
+                with open('settings.ini', 'w') as new_configfile:
+                    settings.write(new_configfile)
+                    tkinter.messagebox.showinfo("Saved", "Saved Successfully")
+                    settings.update()
+                    new_configfile.close()
+            except:
+                tkinter.messagebox.showerror("Error", "Could not save")
+            settings_window.destroy()
+
+        def cancel():
+            settings_window.destroy()
+            return 0
+
+        butt_frame = Frame(settings_window, bg=self.bg_color)
+        butt_frame.pack(side=BOTTOM, pady=4)
+        connect_butt = Button(butt_frame,
+                              text="Save",
+                              fg='#86FF59',
+                              activeforeground='green',
+                              command=save,
+                              bg=self.butt_color,
+                              activebackground=self.active_butt_color)
+        cancel_butt = Button(butt_frame,
+                             text="Cancel",
+                             fg='#FA4854',
+                             activeforeground='red',
+                             command=cancel,
+                             bg=self.butt_color,
+                             activebackground=self.active_butt_color)
+        connect_butt.pack(side=LEFT, padx=5)
+        cancel_butt.pack(side=RIGHT)
+
+        settings_window.mainloop()
+
     def command_interpreter(self, client_message):
         if client_message == "/quit":
-            self.print_to_log("Disconnecting...")
-            self.s.close()
+            os._exit(0)
+
+        elif client_message == "/dc":
+            self.disconnect()
 
         elif client_message == "/help":
             for command, desc in self.command_dict.items():
                 self.print_to_log(command + desc)
             self.s.send(str.encode(client_message))
-
-        elif client_message[0:6] == "/save ":
-            configEditor = configparser.RawConfigParser()
-
-            for profile in self.config.sections():  # lägga till de gamla profilerna i den nya filen
-                configEditor.add_section(profile)
-                configEditor.set(profile, "ip", self.config[profile]["ip"])
-                configEditor.set(profile, "port", self.config[profile]["port"])
-                configEditor.set(profile, "network_protocol", self.config[profile]["network_protocol"])
-                configEditor.set(profile, "username", self.config[profile]["username"])
-                if developer_mode:
-                    configEditor.set(profile, "developer_mode", "True")
-
-            # lägga till den nya profilen till filen
-            prof_name = client_message[6:]
-            configEditor.add_section(prof_name)
-            configEditor.set(prof_name, "ip", chat_server)
-            configEditor.set(prof_name, "port", str(port))
-            configEditor.set(prof_name, "network_protocol", network_protocol)
-            configEditor.set(prof_name, "username", username)
-            if developer_mode:
-                configEditor.set(prof_name, "developer_mode", "True")
-
-            with open('profiles.ini', 'w') as new_configfile:
-                configEditor.write(new_configfile)
-                self.config.read("profiles.ini")
-                self.print_to_log("Done!")
-
-        elif client_message[0:5] == "/del ":
-            if not (client_message[5:] in config.sections()):
-                self.print_to_log("No such profile:" + client_message[5:])
-                return 0
-
-            configEditor = configparser.RawConfigParser()
-
-            for profile in config.sections():  # lägga till de gamla profilerna i den nya filen
-                if profile == client_message[5:]:
-                    continue
-                configEditor.add_section(profile)
-                configEditor.set(profile, "ip", config[profile]["ip"])
-                configEditor.set(profile, "port", config[profile]["port"])
-                configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
-                configEditor.set(profile, "username", config[profile]["username"])
-                if developer_mode:
-                    configEditor.set(profile, "developer_mode", "True")
-
-            with open('profiles.ini', 'w') as new_configfile:
-                configEditor.write(new_configfile)
-                config.read("profiles.ini")  # detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
-                self.print_to_log("Done!")
-
-        elif client_message[0:11] == "/edit -all ":
-            if not (client_message[11:] in config.sections()):
-                self.print_to_log("No such profile:" + client_message[16:])
-                return 0
-
-            configEditor = configparser.RawConfigParser()
-
-            for profile in config.sections():  # lägga till profilerna i den nya filen
-                if profile == client_message[11:]:  # den som ska ändas har hittats
-                    self.print_to_log("Current name:" + profile)
-                    new_profile_name = input("Enter new name:\n>>>")
-                    configEditor.add_section(new_profile_name)
-                    self.print_to_log("Current IP:" + config[profile]["ip"])
-                    configEditor.set(new_profile_name, "ip", input("Enter new IP addres:\n>>>"))
-                    self.print_to_log("Current port:" + str(config[profile]["port"]))
-                    configEditor.set(new_profile_name, "port", input("Enter new port:\n>>>"))
-                    self.print_to_log("Current network protocol:" + config[profile]["network_protocol"])
-                    configEditor.set(new_profile_name, "network_protocol", input("Enter new network protocol:\n>>>"))
-                    self.print_to_log("Current username:" + config[profile]["username"])
-                    configEditor.set(new_profile_name, "username", input("Enter new username:\n>>>"))
-                    if developer_mode:
-                        if not input("Enter new dev mode status(True/False)\n>>>") == "False":
-                            configEditor.set(new_profile_name, "developer_mode", True)
-                else:  # detta var inte profilen som skulle ändras, lägger till den som den är i den nya filen
-                    configEditor.add_section(profile)
-                    configEditor.set(profile, "ip", config[profile]["ip"])
-                    configEditor.set(profile, "port", config[profile]["port"])
-                    configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
-                    configEditor.set(profile, "username", config[profile]["username"])
-                    try:
-                        if config[profile]["developer_mode"]:
-                            configEditor.set(profile, "developer_mode", "True")
-                    except KeyError as e:
-                        pass  # profilen var ej developer, inget ska hända
-
-            with open('profiles.ini', 'w') as new_configfile:
-                configEditor.write(new_configfile)
-                config.read("profiles.ini")  # detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
-
-        elif client_message[0:6] == "/edit ":
-            if not (client_message[6:] in config.sections()):
-                self.print_to_log("No such profile:" + client_message[6:])
-                return 0
-
-            configEditor = configparser.RawConfigParser()
-
-            for profile in config.sections():  # lägga till profilerna i den nya filen
-                if profile == client_message[6:]:  # den som ska ändas har hittats
-                    self.print_to_log("Current name:" + profile)
-                    new_profile_name = input("Enter new profile name:\n>>>")
-                    configEditor.add_section(new_profile_name)
-                    self.print_to_log("Current IP:" + config[profile]["ip"])
-                    configEditor.set(new_profile_name, "ip", input("Enter new IP addres:\n>>>"))
-                    configEditor.set(new_profile_name, "port", config[profile]["port"])  # sker auto
-                    configEditor.set(new_profile_name, "network_protocol",
-                                     config[profile]["network_protocol"])  # sker auto
-                    self.print_to_log("Current username:" + config[profile]["username"])
-                    configEditor.set(new_profile_name, "username", input("Enter new username:\n>>>"))
-                    try:
-                        if config[profile]["developer_mode"]:
-                            configEditor.set(new_profile_name, "developer_mode", "True")
-                    except KeyError as e:
-                        pass  # profilen var ej developer, inget ska hända
-                else:
-                    configEditor.add_section(profile)
-                    configEditor.set(profile, "ip", config[profile]["ip"])
-                    configEditor.set(profile, "port", config[profile]["port"])
-                    configEditor.set(profile, "network_protocol", config[profile]["network_protocol"])
-                    configEditor.set(profile, "username", config[profile]["username"])
-                    try:
-                        if config[profile]["developer_mode"]:
-                            configEditor.set(profile, "developer_mode", "True")
-                    except KeyError as e:
-                        pass  # profilen var ej developer, inget ska hända
-
-            with open('profiles.ini', 'w') as new_configfile:
-                configEditor.write(new_configfile)
-                config.read("profiles.ini")  # detta fungerar inte, ingen aning om varför, kan inte hitta en lösning
-
-        elif client_message == "/view -all":
-            self.print_to_log("Profile name" + self.spacer(15, "Profile name") +
-                  "IP addres" + self.spacer(13, "IP addres") +
-                  "Port" + self.spacer(8, "port") +
-                  "Network Protocol  " +
-                  "Username")
-            for profile in config.sections():
-                self.print_to_log(profile +
-                      (15 - len(profile)) * " " +
-                      config[profile]["ip"] +
-                      (13 - len(config[profile]["ip"])) * " " +
-                      config[profile]["port"] +
-                      (8 - len(config[profile]["port"])) * " " +
-                      config[profile]["network_protocol"] +
-                      (18 - len(config[profile]["network_protocol"])) * " " +
-                      config[profile]["username"])
-
-        elif client_message == "/view":
-            self.print_to_log("Profile name" + self.spacer(15, "Profile name") +
-                  "IP addres" + self.spacer(13, "IP addres") +
-                  "Username")
-            for profile in config.sections():
-                self.print_to_log(profile +
-                      (15 - len(profile)) * " " +
-                      config[profile]["ip"] +
-                      (13 - len(config[profile]["ip"])) * " " +
-                      config[profile]["username"])
 
         else:
             self.s.send(str.encode(client_message))
@@ -576,8 +506,8 @@ class GUI:
             self.print_to_log("Disconnected from: " + self.chat_server.get())
             self.chat_server.set('')
         except OSError as e:
-            self.print_to_log(e)
-            print(str(e)[0:16])
+            if self.show_errors:
+                self.print_to_log(e)
             if (str(e)[0:11]=="[Errno 107]") | (str(e)[0:16]=="[WinError 10057]"):
                 self.print_to_log("Please check if server is running")
 
@@ -586,7 +516,7 @@ class GUI:
         if self.msg_log.size() > 30:
             self.msg_log.yview_scroll(1, UNITS)
 
-    def read_input(self):  #does not work work woth server
+    def read_input(self):
         if self.user_input.get() == '':
             return 0
         try:
@@ -597,8 +527,8 @@ class GUI:
 
         except OSError:#not connectde to a sever
             self.print_to_log(self.user_input.get())
-        except AttributeError:
-            self.print_to_log(self.user_input.get())#same
+        except AttributeError:#not connectde to a sever, different depending on platform
+            self.print_to_log(self.user_input.get())
         finally:
             self.user_input.set("")
 
@@ -661,7 +591,7 @@ class GUI:
         def cancel():
             self.username.set('')
             self.chat_server.set('')
-            self.port.set('')
+            self.port.set(0)
             self.network_protocol.set('')
             connet_window.destroy()
 
@@ -706,7 +636,7 @@ class GUI:
         self.s.close()
         self.username.set('')
         #self.chat_server.set('') this is done in self.recieve_messages()
-        self.port.set('')
+        self.port.set(0)
         self.network_protocol.set('')
         self.c_or_dc.set("Connect")
 
@@ -725,7 +655,8 @@ class GUI:
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
         except socket.error as e:  # couldn't connect to given IP + port
             self.print_to_log(("Cound not connect to " + self.chat_server.get() + ":" + str(self.port.get())))
-            self.print_to_log(str(e))
+            if self.show_errors:
+                self.print_to_log(str(e))
 
         reciever = threading.Thread(target=self.recieve_messages, daemon=0)
         reciever.start()
@@ -734,13 +665,7 @@ class GUI:
     def build_window(self, window):
         window.title("Dolphin")
 
-        self.bg_color="#8BA9B3"#the backgrond color of the window
-        #button colors
-        self.butt_color = "#685370"
-        self.active_butt_color = "#BBA3C4" #color when mouse hovers over it
-        butt_fg_color = "white"
-
-        toolbar_frame = Frame(window, bg="#536970")  # the toolbar frame
+        toolbar_frame = Frame(window, bg=self.second_bg_color)  # the toolbar frame
         toolbar_frame.pack(side=TOP, fill=X)
 
         right_hand_frame = Frame(window, bg=self.bg_color)  # splits the rest of the window in two
@@ -749,9 +674,9 @@ class GUI:
         left_hand_frame.pack(side=LEFT, fill=Y)
 
         info_frame = LabelFrame(right_hand_frame,  # creates the info frame
-                                     text="Connection information",
-                                     fg="black",
-                                     bg=self.bg_color)
+                                text="Connection information",
+                                bg=self.bg_color,
+                                )
         info_frame.pack(pady=5, padx=5)
 
         ad_frame = Frame(right_hand_frame, bg="black")  # the advertisment frame (optinal)
@@ -804,7 +729,7 @@ class GUI:
         info_keys = [Label(info_frame, text="Server name:", bg=self.bg_color),
                           Label(info_frame, text="IP:", bg=self.bg_color),
                           Label(info_frame, text="Username:", bg=self.bg_color),
-                          Label(info_frame, text="Level:", bg=self.bg_color),]
+                          Label(info_frame, text="Level:", bg=self.bg_color)]
 
         info_values = [Label(info_frame, text="placeholder", bg=self.bg_color),
                             Label(info_frame, textvariable=self.chat_server, bg=self.bg_color),
@@ -815,7 +740,7 @@ class GUI:
             info_keys[n].grid(row=n, column=0, sticky=E)
             info_values[n].grid(row=n, column=1, sticky=W)
 
-        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5)
+        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5, font="Impact")
         ad.pack(padx=5, pady=5)
 
         # TOOLBAR BUTTONS
@@ -838,23 +763,23 @@ class GUI:
                               bg=self.butt_color,
                               bd=2,
                               height=2,
-                              fg=butt_fg_color,
+                              fg=self.butt_fg_color,
                               activebackground=self.active_butt_color)
 
         self.profile_butt = Menubutton(toolbar_frame,
-                                  text="Profiles",
-                                  relief=RAISED,
-                                  bd=2,
-                                  height=2,
-                                  bg=self.butt_color,
-                                  fg=butt_fg_color,
-                                  activebackground=self.active_butt_color)
+                                       text="Profiles",
+                                       relief=RAISED,
+                                       bd=2,
+                                       height=2,
+                                       bg=self.butt_color,
+                                       fg=self.butt_fg_color,
+                                       activebackground=self.active_butt_color)
         self.profile_butt.menu=Menu(self.profile_butt,
-                               bd=2,
-                               tearoff=0,
-                               bg=self.butt_color,
-                               fg=butt_fg_color,
-                               activebackground=self.active_butt_color)
+                                    bd=2,
+                                    tearoff=0,
+                                    bg=self.butt_color,
+                                    fg=self.butt_fg_color,
+                                    activebackground=self.active_butt_color)
 
         def new_profile():
             #by starting this in a new thread you will be able to recive messages while creating profiles
@@ -870,6 +795,13 @@ class GUI:
                     return 0
             edit_profile_thread = threading.Thread(target=self.edit_profiles, daemon=1, name="edit_profile")
             edit_profile_thread.start()
+
+        def settings():
+            for thread in threading.enumerate():
+                if str(thread)[0:16]=="<Thread(settings":
+                    return 0
+            settings_thread = threading.Thread(target=self.settings, daemon=1, name="settings")
+            settings_thread.start()
 
         self.profile_butt['menu']=self.profile_butt.menu
         self.profile_butt.menu.add_command(label='New', command=new_profile)
@@ -889,8 +821,9 @@ class GUI:
                                height=2,
                                bd=2,
                                bg=self.butt_color,
-                               fg=butt_fg_color,
-                               activebackground=self.active_butt_color)
+                               fg=self.butt_fg_color,
+                               activebackground=self.active_butt_color,
+                               command=settings)
 
         connect_butt.pack(side=LEFT, padx=3, pady=2)
         self.profile_butt.pack(side=LEFT, padx=3, pady=2)
@@ -925,24 +858,35 @@ class GUI:
         self.username = StringVar()
         self.network_protocol = StringVar()
         self.profile_button_selections=[]
+        
+        theme = configparser.ConfigParser()
+        theme.read("theme.ini")
 
-        '''for n in range(128):
-        for n in range(10):
-            #creates 128 empty emelents in the list
-            #this number should be constant
-            #later we will add ProfileButton objects in the slots
-            self.profile_button_selections.append(None)'''
+        selected_theme = StringVar()
+        selected_theme.set(theme.get("selected", "name"))
+
+        self.bg_color = theme.get(selected_theme.get(), "background")
+        self.second_bg_color = theme.get(selected_theme.get(), "secondary_background")
+        self.butt_color = theme.get(selected_theme.get(), "button_color")
+        self.active_butt_color = theme.get(selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
+        self.butt_fg_color = theme.get(selected_theme.get(), "button_foreground")
+        #self.font = font.Font(family=theme.get(selected_theme.get(), "font"), size=10)
+
+        self.settings_file = configparser.ConfigParser()
+        self.settings_file.read("settings.ini")
+        if self.settings_file.get("DEFAULT", "show_errors") == "True":
+            self.show_errors=True
+        elif self.settings_file.get("DEFAULT", "show_errors") == "False":
+            self.show_errors=False
+        else:
+            raise configparser.NoOptionError#not quite the right error but hey
 
         self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
                         "/quit": self.spacer(20, "/quit") + "exit program",
-                        "/save [name]": self.spacer(20, "/save [name]") + "save profile settings as [name]",
-                        "/del [name]": self.spacer(20, "/del [name]") + "delete profile [name]",
-                        "/view": self.spacer(20, "/view") + "views your saved profiles",
-                        "/edit [name]": self.spacer(20, "/edit [name]") + "edit profile [name]",
-                        "/edit -all [name]": self.spacer(20, "/edit -all [name]") + "edit all avalible information about profile [name]",
-                        "/view -all": self.spacer(20, "/view -all") + "views all inofmation avalible about you profiles"}
+                             "/dc": self.spacer(20, "/dc") + "disconnect from server"}
 
         self.build_window(window)
+        self.print_to_log(version)
 
 window = Tk()  # creates the main window
 
