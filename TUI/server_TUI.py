@@ -147,7 +147,7 @@ def listenToClient(conn, username):
             cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + message_data
             waddstr(logwin, "\n"+cmh.common_message)
             wrefresh(logwin)
-            if cmh.common_message.startswith(username+":/"): #commands
+            if cmh.common_message[11:].startswith(username+":/"): #commands
                 cmh.common_message = interpret_commands(conn, username)
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
                 chatlog.write("\n"+cmh.common_message)
@@ -507,7 +507,7 @@ else:
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-version="0.1.0.2"
+version="0.1.0.3"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
