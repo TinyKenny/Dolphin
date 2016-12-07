@@ -9,56 +9,56 @@ from unicurses import *
 from sys import platform
 
 
-class CommmonMessageHoster:
+class CommonMessageHoster:
     common_message=""
 
 def clientHandler(sock):
-	global taken_usernames, logwin
-	random_welcome_message = ["You want the crucible? I am the crucible.",
+    global taken_usernames, logwin
+    random_welcome_message = ["You want the crucible? I am the crucible.",
                               "FIGHT ON GERUDIAN!!!",
-							  "I can't believe what I'm seeing!",
+                              "I can't believe what I'm seeing!",
                               "You can fight by my side anytime, Gaurdian",
                               "Is english class canceld tomorrow?",
-							  "Livet är inte optimalt.",
-							  "Show your support! Purchase Dolphin Pro - Premium edition today!",
-							  "Skolan måste vara tråkig, annars jobbar man inte."]
-	sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
-	username = (sock.recv(2048)).decode("utf-8")
-	raddr = getRaddr(sock)
-	
-	if username in taken_usernames or username.lower() == "server announcement" or username.lower() == "server announcement:":
-		sock.send(str.encode("That username is already taken."))
-		waddstr(logwin,"\nDisconnected from "+raddr)
-		wrefresh(logwin)
-		sock.close()
-		return
-	elif username not in taken_usernames:
-		taken_usernames[username]=False
-	else:
-		waddstr(logwin,"\nSomething went wrong with the username check.")
-		sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
-		waddstr(logwin,"\nDisconnected from " + raddr)
-		wrefresh(logwin)
-		sock.close()
-		return
+                              "Livet är inte optimalt.",
+                              "Show your support! Purchase Dolphin Pro - Premium edition today!",
+                              "Skolan måste vara tråkig, annars jobbar man inte."]
+    sock.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
+    username = (sock.recv(2048)).decode("utf-8")
+    raddr = getRaddr(sock)
+    
+    if username in taken_usernames or username.lower() == "server announcement" or username.lower() == "server announcement:":
+        sock.send(str.encode("That username is already taken."))
+        waddstr(logwin,"\nDisconnected from "+raddr)
+        wrefresh(logwin)
+        sock.close()
+        return
+    elif username not in taken_usernames:
+        taken_usernames[username]=False
+    else:
+        waddstr(logwin,"\nSomething went wrong with the username check.")
+        sock.send(str.encode("Something is wrong. Please report this event, and what you did to make this happen, to the server developer"))
+        waddstr(logwin,"\nDisconnected from " + raddr)
+        wrefresh(logwin)
+        sock.close()
+        return
 
-	listener= threading.Thread(target=listenToClient,
+    listener= threading.Thread(target=listenToClient,
                               daemon=1,
                               kwargs={'conn':sock, 'username':username},
                               name="L-" + username)
-	sender = threading.Thread(target=sendToClient,
-							  daemon=1,
+    sender = threading.Thread(target=sendToClient,
+                              daemon=1,
                               kwargs={'conn':sock, 'listener':listener, 'username':username},
                               name="S-" + username)
-	listener.start()
-	sender.start()
+    listener.start()
+    sender.start()
 	
-	while listener.is_alive():
-		time.sleep(0.1)
-	if username in taken_usernames:
-		del taken_usernames[username]
-	waddstr(logwin,"\nDisconnected from " + raddr)
-	wrefresh(logwin)
+    while listener.is_alive():
+        time.sleep(0.1)
+    if username in taken_usernames:
+        del taken_usernames[username]
+    waddstr(logwin,"\nDisconnected from " + raddr)
+    wrefresh(logwin)
 
 def destroy_win(local_win):
 	wborder(local_win, CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '), CCHAR(' '))
@@ -128,52 +128,55 @@ def interpret_commands(conn, username):
 	return(cmh.common_message)
 
 def listenToClient(conn, username):
-	global taken_usernames, help, root_help, root_pass, logwin
-	raddr=""
-	try:
-		raddr=getRaddr(conn)
-	except:
-		raddr = getRaddr(conn)
-	cmh.common_message = time.strftime("[%H:%M:%S] ")+ username + " connected"
-	thread_manager.acquire()
-	thread_manager.notify_all()
-	thread_manager.release()
-	while True:
-		try:
-			cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + (conn.recv(2048)).decode("utf-8")
-			waddstr(logwin, "\n"+cmh.common_message)
-			wrefresh(logwin)
-			if cmh.common_message.startswith(username+":/"): #commands
-				cmh.common_message = interpret_commands(conn, username)
-			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-				chatlog.write("\n"+cmh.common_message)
-			thread_manager.acquire() #hämtar managern
-			thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
-			thread_manager.release()  # detta gör att manangern kan gå till andra trådar
-		except ConnectionResetError:
-			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
-			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-				chatlog.write("\n"+cmh.common_message)
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-		except BrokenPipeError:
-			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
-			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-				chatlog.write("\n"+cmh.common_message)
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
-		except ConnectionAbortedError:
-			cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " was kicked"
-			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-				chatlog.write("\n"+cmh.common_message)
-			thread_manager.acquire()
-			thread_manager.notify_all()
-			thread_manager.release()
-			break
+    global taken_usernames, help, root_help, root_pass, logwin
+    raddr=""
+    try:
+        raddr=getRaddr(conn)
+    except:
+        raddr = getRaddr(conn)
+    cmh.common_message = time.strftime("[%H:%M:%S] ")+ username + " connected"
+    thread_manager.acquire()
+    thread_manager.notify_all()
+    thread_manager.release()
+    while True:
+        try:
+            message_data=(conn.recv(2048)).decode("utf-8")
+            if message_data == "":
+                break
+            cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + (conn.recv(2048)).decode("utf-8")
+            waddstr(logwin, "\n"+cmh.common_message)
+            wrefresh(logwin)
+            if cmh.common_message.startswith(username+":/"): #commands
+                cmh.common_message = interpret_commands(conn, username)
+            with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+                chatlog.write("\n"+cmh.common_message)
+            thread_manager.acquire() #hämtar managern
+            thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
+            thread_manager.release()  # detta gör att manangern kan gå till andra trådar
+        except ConnectionResetError:
+            cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
+            with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+                chatlog.write("\n"+cmh.common_message)
+            thread_manager.acquire()
+            thread_manager.notify_all()
+            thread_manager.release()
+            break
+        except BrokenPipeError:
+            cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
+            with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+                chatlog.write("\n"+cmh.common_message)
+            thread_manager.acquire()
+            thread_manager.notify_all()
+            thread_manager.release()
+            break
+        except ConnectionAbortedError:
+            cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " was kicked"
+            with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+                chatlog.write("\n"+cmh.common_message)
+            thread_manager.acquire()
+            thread_manager.notify_all()
+            thread_manager.release()
+            break
 
 def make_new_profile(config):
 	new_prof_box=newwin(20,60,int(5),15)
@@ -503,11 +506,11 @@ else:
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-version="0.1.0.0"
+version="0.1.0.0-QuickFix"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
-cmh = CommmonMessageHoster()
+cmh = CommonMessageHoster()
 lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 s = socket
@@ -531,7 +534,7 @@ for command in root_command_dict:
 	root_help+="\n"+command+" "*(20-len(command))+root_command_dict[command]
 for command in server_command_dict:
 	server_help+="\n"+command+" "*(20-len(command))+server_command_dict[command]
-	
+
 
 if str.lower(network_protocol)=="ipv6":
 	s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
@@ -569,7 +572,7 @@ wrefresh(logwin)
 serverinput=threading.Thread(target=server_input,daemon=1)
 serverinput.start()
 
-while 1:
+while True:
 	for n in range(len(client_handlers)):
 		if not client_handlers[n].is_alive():
 			client_handlers.pop(n)
