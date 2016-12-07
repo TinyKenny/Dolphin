@@ -88,44 +88,45 @@ def getRaddr(conn):
     return raddr
 
 def interpret_commands(conn, username):
-	global taken_usernames, help, root_help, root_pass, logwin
-	if taken_usernames[username]: #root commands
-		if cmh.common_message==username+":/terminate":
-			waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
-			with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-				chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
-			wrefresh(logwin)
-			s.close()
-			return("")
-		elif cmh.common_message==username+":/users -show":
-			users=cmh.common_message+"\nCurrently connected users:"
-			for u in taken_usernames:
-				users=users+"\n"+u
-			return(users)
-		elif cmh.common_message==username+":/users":
-			conn.send(str.encode(str(taken_usernames)))
-			return("")
-		elif cmh.common_message.startswith(username+":/kick "):
-			if cmh.common_message[len(username+":/kick "):] not in taken_usernames:
-				conn.send(str.encode(cmh.common_message+"\nThat user is not connected."))
-				return("")
-			elif taken_usernames[username]:
-				conn.send(str.encode(cmh.common_message+"\nYou can't kick that user."))
-				return("")
-	elif cmh.common_message==username+":/root "+root_pass:
-		taken_usernames[username]=True
-		conn.send(str.encode("You have admin rights!"))
-		return("")
-	if cmh.common_message==username+":/help":
-		if taken_usernames[username]:
-			conn.send(str.encode(help+root_help))
-			return("")
-		else:
-			conn.send(str.encode(help))
-			return("")
-	elif cmh.common_message.startswith(username+":/me"):
-		return (time.strftime("[%H:%M:%S] ")+username+cmh.common_message[len(username+":/me"):])
-	return(cmh.common_message)
+    global taken_usernames, help, root_help, root_pass, logwin
+    if taken_usernames[username]: #root commands
+        if cmh.common_message[11:]==username+":/terminate":
+            waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
+            with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
+                chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
+            wrefresh(logwin)
+            server.shutdown()
+            server.close_server()
+            return("")
+        elif cmh.common_message[11:]==username+":/users -show":
+            users=cmh.common_message+"\nCurrently connected users:"
+            for u in taken_usernames:
+                users=users+"\n"+u
+            return(users)
+        elif cmh.common_message[11:]==username+":/users":
+            conn.send(str.encode(str(taken_usernames)))
+            return("")
+        elif cmh.common_message[11:].startswith(username+":/kick "):
+            if cmh.common_message[11+len(username+":/kick "):] not in taken_usernames:
+                conn.send(str.encode(cmh.common_message+"\nThat user is not connected."))
+                return("")
+            elif taken_usernames[cmh.common_message[11+len(username+":/kick "):]]:
+                conn.send(str.encode(cmh.common_message+"\nYou can't kick that user."))
+                return("")
+    elif cmh.common_message[11:0]==username+":/root "+root_pass:
+        taken_usernames[username]=True
+        conn.send(str.encode("You have admin rights!"))
+        return("")
+    if cmh.common_message[11:]==username+":/help":
+        if taken_usernames[username]:
+            conn.send(str.encode(help+root_help))
+            return("")
+        else:
+            conn.send(str.encode(help))
+            return("")
+    elif cmh.common_message[11:].startswith(username+":/me"):
+        return (time.strftime("[%H:%M:%S] ")+username+cmh.common_message[11+len(username+":/me"):])
+    return(cmh.common_message)
 
 def listenToClient(conn, username):
     global taken_usernames, help, root_help, root_pass, logwin
