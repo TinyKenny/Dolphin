@@ -143,7 +143,7 @@ def listenToClient(conn, username):
             message_data=(conn.recv(2048)).decode("utf-8")
             if message_data == "":
                 break
-            cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + (conn.recv(2048)).decode("utf-8")
+            cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + message_data
             waddstr(logwin, "\n"+cmh.common_message)
             wrefresh(logwin)
             if cmh.common_message.startswith(username+":/"): #commands
@@ -506,7 +506,7 @@ else:
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-version="0.1.0.0-QuickFix"
+version="0.1.0.2"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
