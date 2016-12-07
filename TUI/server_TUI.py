@@ -93,7 +93,7 @@ def interpret_commands(conn, username):
         if cmh.common_message[11:]==username+":/terminate":
             waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-                chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
+                chatlog.write(time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
             wrefresh(logwin)
             server.shutdown()
             server.close_server()
@@ -113,7 +113,7 @@ def interpret_commands(conn, username):
             elif taken_usernames[cmh.common_message[11+len(username+":/kick "):]]:
                 conn.send(str.encode(cmh.common_message+"\nYou can't kick that user."))
                 return("")
-    elif cmh.common_message[11:0]==username+":/root "+root_pass:
+    elif cmh.common_message[11:] == username+":/root "+root_pass:
         taken_usernames[username]=True
         conn.send(str.encode("You have admin rights!"))
         return("")
@@ -150,14 +150,14 @@ def listenToClient(conn, username):
             if cmh.common_message[11:].startswith(username+":/"): #commands
                 cmh.common_message = interpret_commands(conn, username)
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-                chatlog.write("\n"+cmh.common_message)
+                chatlog.write(cmh.common_message+"\n")
             thread_manager.acquire() #hämtar managern
             thread_manager.notify_all()  #notifera en random tråd som vändtar, kräver att managern är i tråden
             thread_manager.release()  # detta gör att manangern kan gå till andra trådar
         except ConnectionResetError:
             cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-                chatlog.write("\n"+cmh.common_message)
+                chatlog.write(cmh.common_message+"\n")
             thread_manager.acquire()
             thread_manager.notify_all()
             thread_manager.release()
@@ -165,7 +165,7 @@ def listenToClient(conn, username):
         except BrokenPipeError:
             cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " disconnected"
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-                chatlog.write("\n"+cmh.common_message)
+                chatlog.write(cmh.common_message+"\n")
             thread_manager.acquire()
             thread_manager.notify_all()
             thread_manager.release()
@@ -173,7 +173,7 @@ def listenToClient(conn, username):
         except ConnectionAbortedError:
             cmh.common_message= time.strftime("[%H:%M:%S] ") + str(username) + " was kicked"
             with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-                chatlog.write("\n"+cmh.common_message)
+                chatlog.write(cmh.common_message+"\n")
             thread_manager.acquire()
             thread_manager.notify_all()
             thread_manager.release()
@@ -363,7 +363,7 @@ def server_input():
 			if server_message == "/terminate":
 				waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
 				with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-					chatlog.write("\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
+					chatlog.write(time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
 				wrefresh(logwin)
 				s.close()
 				break
@@ -419,7 +419,7 @@ def server_input():
 					wrefresh(logwin)
 					cmh.common_message=time.strftime("[%H:%M:%S] ")+"Server Announcement: "+server_message[len("/demote "):]+" has been demoted."
 		with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-			chatlog.write("\n"+cmh.common_message)
+			chatlog.write(cmh.common_message+"\n")
 		thread_manager.acquire()
 		thread_manager.notify_all()
 		thread_manager.release()
@@ -434,7 +434,7 @@ else:
 	if not os.path.exists("./serverlogs/chatlogs"):
 		os.makedirs("./serverlogs/chatlogs")
 with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-	chatlog.write("Server started.")
+	chatlog.write("Server started.\n")
 
 if platform == "win32":
 	os.system("mode con: cols=90 lines=30")	
@@ -507,7 +507,7 @@ else:
 	port=int(config[profile]["port"])
 	max_population=int(config[profile]["max_population"])
 	root_pass=str(config[profile]["root_pass"])
-version="0.1.0.3"
+version="0.1.0.4"
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
