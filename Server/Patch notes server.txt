@@ -1,0 +1,24 @@
+v 0.0.0.1:
+see github for information about this version, and all previous versions.
+
+
+v 0.0.1.0:
++Moved the manual profile settings into its own function (make_temp_profile), for cleaner code.
++Added an exception for BrokenPipeError in the sendToClient while-loop, to make the thread end properly, instead of crashing the thread, when someone disconnects.
++Added an attempt to set the size of the terminal window to the recommended size, when running the server_TUI.py on linux.
+
+v 0.1.0.0
++Added logging of messages sent by the server to all users.
++Added timestamps!
+
+v 0.2.0.1
++Implemented the "socketserver" module.
+-The "socket" module is no longer used directly, and has for that reason been removed.
++Added unicurses.py to the same directory as server.py, to remove the requirement of installing unicurses to run the server.
++Bugfixes:
+    +Fixed a bug that caused timestamps to stop the command_interpreter from being called.
+    +Fixed a bug that caused timestamps to prevent the command_interpreter from correctly interpreting user input.
+    +Fixed a bug that caused timestamps to prevented the admin-rights check of the user that uses "/kick"
++Increased gluten tolerance by 13%
+
+
