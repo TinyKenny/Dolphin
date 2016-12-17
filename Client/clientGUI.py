@@ -7,7 +7,7 @@ import threading
 import configparser
 import time
 
-version="Version 0.0.1.0 ALPHA"
+version="Version 0.0.1.1 ALPHA"
 global gui_obj #make this cunt global so that it can be used in ProfileButtons
 
 class ProfileButtons:
@@ -49,7 +49,8 @@ class GUI:
         #profile name
         Label(new_profile_window,
               text="Profile Name",
-              bg=self.bg_color).grid(row=0, column=0, sticky='E')
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=0, column=0, sticky='E')
         name_field = Entry(new_profile_window,
                            width=16,
                            exportselection=0,
@@ -57,7 +58,10 @@ class GUI:
         name_field.grid(row=0, column=1, sticky='W', pady=2)
 
         # username
-        Label(new_profile_window, text="Username", bg=self.bg_color).grid(row=1, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Username",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=1, column=0, sticky='E')
         username_field = Entry(new_profile_window,
                                width=16,
                                exportselection=0,
@@ -67,7 +71,10 @@ class GUI:
         username_field.insert(END, self.username.get())
 
         # ip
-        Label(new_profile_window, text="IP adresss", bg=self.bg_color).grid(row=2, column=0, sticky='E')
+        Label(new_profile_window,
+              text="IP adresss",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=2, column=0, sticky='E')
         chat_server_field = Entry(new_profile_window,
                                   width=16,
                                   exportselection=0,
@@ -77,7 +84,10 @@ class GUI:
         chat_server_field.insert(END, self.chat_server.get())
 
         # port
-        Label(new_profile_window, text="Port", bg=self.bg_color).grid(row=3, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Port",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=3, column=0, sticky='E')
         port_field = Entry(new_profile_window,
                            width=5,
                            exportselection=0,
@@ -99,13 +109,15 @@ class GUI:
 
         network_protocol_frame = LabelFrame(new_profile_window,
                                             text="Network Protocol",
-                                            bg=self.bg_color)
+                                            bg=self.bg_color,
+                                            fg=self.foreground_color)
         network_protocol_frame.grid(row=4, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
                                 text="IPv4", variable=network_protocol,
                                 value='IPv4',
                                 command=setIPv4,
-                                bg=self.bg_color)
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
         ipv4_butt.grid()
         ipv4_butt.select()
 
@@ -114,7 +126,8 @@ class GUI:
                                 variable=network_protocol,
                                 value='IPv6',
                                 command=setIPv6,
-                                bg=self.bg_color)
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
         ipv6_butt.grid()
 
         if self.network_protocol.get() == "IPv6":
@@ -178,7 +191,10 @@ class GUI:
         new_profile_window.configure(bg=self.bg_color)
 
         #profile name
-        Label(new_profile_window, text="Profile Name", bg=self.bg_color).grid(row=0, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Profile Name",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=0, column=0, sticky='E')
         name_field = Entry(new_profile_window,
                            width=16,
                            exportselection=0,
@@ -187,7 +203,10 @@ class GUI:
         name_field.insert(END, profile_name)
 
         # username
-        Label(new_profile_window, text="Username", bg=self.bg_color).grid(row=1, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Username",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=1, column=0, sticky='E')
         username_field = Entry(new_profile_window,
                                width=16,
                                exportselection=0,
@@ -197,7 +216,10 @@ class GUI:
         username_field.insert(END, username)
 
         # ip
-        Label(new_profile_window, text="IP adresss", bg=self.bg_color).grid(row=2, column=0, sticky='E')
+        Label(new_profile_window,
+              text="IP adresss",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=2, column=0, sticky='E')
         chat_server_field = Entry(new_profile_window,
                                   width=16,
                                   exportselection=0,
@@ -207,7 +229,10 @@ class GUI:
         chat_server_field.insert(END, ip)
 
         # port
-        Label(new_profile_window, text="Port", bg=self.bg_color).grid(row=3, column=0, sticky='E')
+        Label(new_profile_window,
+              text="Port",
+              bg=self.bg_color,
+              fg=self.foreground_color).grid(row=3, column=0, sticky='E')
         port_field = Entry(new_profile_window,
                            width=5,
                            exportselection=0,
@@ -229,13 +254,16 @@ class GUI:
 
         network_protocol_frame = LabelFrame(new_profile_window,
                                             text="Network Protocol",
-                                            bg=self.bg_color)
+                                            bg=self.bg_color,
+                                            fg=self.foreground_color)
         network_protocol_frame.grid(row=4, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
-                                text="IPv4", variable=network_protocol,
+                                text="IPv4",
+                                variable=network_protocol,
                                 value='IPv4',
                                 command=setIPv4,
-                                bg=self.bg_color)
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
         ipv4_butt.grid()
         ipv4_butt.select()
 
@@ -244,7 +272,8 @@ class GUI:
                                 variable=network_protocol,
                                 value='IPv6',
                                 command=setIPv6,
-                                bg=self.bg_color)
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
         ipv6_butt.grid()
 
         if network_protocol_string == "IPv6":
@@ -330,10 +359,10 @@ class GUI:
         the_rest_frame=Frame(edit_profile_window, bg=self.bg_color)
         the_rest_frame.pack(side=RIGHT, padx=3, pady=3)
 
-        info_frame=LabelFrame(the_rest_frame, text="Info", bg=self.bg_color)
-        info_frame.pack(pady=3)
+        self.info_frame=LabelFrame(the_rest_frame, text="Info", bg=self.bg_color, fg=self.foreground_color)
+        self.info_frame.pack(pady=3)
 
-        test=Label(info_frame, text="Comming soon...", bg=self.bg_color)
+        test=Label(self.info_frame, text="Comming soon...", bg=self.bg_color, fg=self.foreground_color)
         test.grid(pady=3)
 
         def new():
@@ -375,7 +404,7 @@ class GUI:
         new_butt=Button(the_rest_frame,
                         text="New",
                         width=6,
-                        fg='white',
+                        fg=self.butt_fg_color,
                         activeforeground='white',
                         command=new,
                         bg=self.butt_color,
@@ -385,7 +414,7 @@ class GUI:
         edit_butt=Button(the_rest_frame,
                          text="Edit",
                          width=6,
-                         fg='white',
+                         fg=self.butt_fg_color,
                          activeforeground='white',
                          command=edit,
                          bg=self.butt_color,
@@ -394,7 +423,7 @@ class GUI:
 
         delete_butt = Button(the_rest_frame,
                              text="Delete",
-                             fg='white',
+                             fg=self.butt_fg_color,
                              width=6,
                              activeforeground='white',
                              command=delete,
@@ -408,8 +437,6 @@ class GUI:
         edit_profile_window.mainloop()
 
     def settings(self):
-        self.print_to_log("Not implemented yet")
-        return 0
 
         settings_window = Tk()
         settings_window.title("Settings")
@@ -418,42 +445,228 @@ class GUI:
         settings = configparser.ConfigParser()
         settings.read("settings.ini")
 
+        theme = configparser.ConfigParser()
+        theme.read("theme.ini")
+
         show_errors_var = StringVar()
 
-        show_errors_checkbox = Checkbutton(settings_window,
-                                           text="Show error messages",
-                                           bg=self.bg_color,
-                                           activebackground=self.bg_color,
-                                           variable=show_errors_var)
-        show_errors_checkbox.pack()
+        def setYes():
+            show_errors_var.set("Yes")
+
+        def setNo():
+            show_errors_var.set("No")
+
+        show_errors_frame = LabelFrame(settings_window,
+                                       text="Show error messages",
+                                       bg=self.bg_color,
+                                       fg=self.foreground_color)
+        show_errors_frame.pack(pady=5, padx=5, fill=X)
+        yes_butt = Radiobutton(show_errors_frame,
+                               text="Yes",
+                               variable=show_errors_var,
+                               value="Yes",
+                               command=setYes,
+                               bg=self.bg_color,
+                               fg=self.foreground_color)
+        yes_butt.grid()
+
+        no_butt = Radiobutton(show_errors_frame,
+                              text="No",
+                              variable=show_errors_var,
+                              value='No',
+                              command=setNo,
+                              bg=self.bg_color,
+                              fg=self.foreground_color)
+        no_butt.grid()
 
         if settings.get("DEFAULT", "show_errors") == "True":
-            show_errors_checkbox.select()
+            yes_butt.select()
+            yes_butt.invoke()
         elif settings.get("DEFAULT", "show_errors") == "False":
-            show_errors_checkbox.deselect()
+            no_butt.select()
+            no_butt.invoke()
         else:
-            tkinter.messagebox.showerror("Error", "Corrupt Settings file")
+            tkinter.messagebox.showerror("Error", "Corrupt settings file")
             settings_window.destroy()
-            return 0
+            return 1
+
+        theme_frame = LabelFrame(settings_window,
+                                 bg=self.bg_color,
+                                 text="Theme",
+                                 fg=self.foreground_color)
+        theme_frame.pack(padx=5)
+
+        theme_selector_var=StringVar(theme_frame)
+        avalible_themes = theme.sections()
+        avalible_themes.pop(0) #removes the "selected" section
+
+        def change_selected_theme(var):
+            #clears all the data
+            bg_field.delete(0, END)
+            alt_bg_field.delete(0, END)
+            butt_field.delete(0, END)
+            active_butt_field.delete(0, END)
+            butt_fg_field.delete(0, END)
+            fg_field.delete(0, END)
+            theme_name_field.delete(0, END)
+
+            #inserts the new data
+            self.selected_theme.set(var)
+            bg_field.insert(END, theme.get(self.selected_theme.get(), "background"))
+            alt_bg_field.insert(END, theme.get(self.selected_theme.get(), "secondary_background"))
+            butt_field.insert(END, theme.get(self.selected_theme.get(), "button_color"))
+            active_butt_field.insert(END, theme.get(self.selected_theme.get(), "active_button_color"))
+            butt_fg_field.insert(END, theme.get(self.selected_theme.get(), "button_foreground"))
+            fg_field.insert(END, theme.get(self.selected_theme.get(), "foreground"))
+            theme_name_field.insert(END, self.selected_theme.get())
+
+        theme_selector_var.set(self.selected_theme.get())
+        theme_selector=OptionMenu(theme_frame,
+                                  theme_selector_var,
+                                  *avalible_themes, command=change_selected_theme)
+        theme_selector.config(bg=self.butt_color,
+                              fg=self.butt_fg_color,
+                              activebackground=self.active_butt_color,
+                              activeforeground=self.butt_fg_color,
+                              highlightthickness=0)
+        theme_selector.grid(row=0, column=1, padx=3, pady=2)
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Selected theme",
+              fg=self.foreground_color).grid(row=0, column=0, sticky=E)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Background color",
+              fg=self.foreground_color).grid(row=1, column=0, sticky=E)
+        bg_field = Entry(theme_frame,
+                         width=8,
+                         exportselection=0,
+                         bg="white")
+        bg_field.insert(END, self.bg_color)
+        bg_field.grid(row=1, column=1, sticky=W, padx=3)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Secondary background color",
+              fg=self.foreground_color).grid(row=2, column=0, sticky=E)
+        alt_bg_field = Entry(theme_frame,
+                             width=8,
+                             exportselection=0,
+                             bg="white")
+        alt_bg_field.grid(row=2, column=1, sticky=W, padx=3)
+        alt_bg_field.insert(END, self.second_bg_color)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Foreground color",
+              fg=self.foreground_color).grid(row=3, column=0, sticky=E)
+        fg_field = Entry(theme_frame,
+                         width=8,
+                         exportselection=0,
+                         bg="white")
+        fg_field.insert(END, self.foreground_color)
+        fg_field.grid(row=3, column=1, sticky=W, padx=3)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Button color",
+              fg=self.foreground_color).grid(row=4, column=0, sticky=E)
+        butt_field = Entry(theme_frame,
+                           width=8,
+                           exportselection=0,
+                           bg="white")
+        butt_field.insert(END, self.butt_color)
+        butt_field.grid(row=4, column=1, sticky=W, padx=3)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Active button color",
+              fg=self.foreground_color).grid(row=5, column=0, sticky=E)
+        active_butt_field = Entry(theme_frame,
+                                  width=8,
+                                  exportselection=0,
+                                  bg="white")
+        active_butt_field.insert(END, self.active_butt_color)
+        active_butt_field.grid(row=5, column=1, sticky=W, padx=3)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Button foreground",
+              fg=self.foreground_color).grid(row=6, column=0, sticky=E)
+        butt_fg_field = Entry(theme_frame,
+                              width=8,
+                              exportselection=0,
+                              bg="white")
+        butt_fg_field.insert(END, self.butt_fg_color)
+        butt_fg_field.grid(row=6, column=1, sticky=W, padx=3)
+
+        Label(theme_frame,
+              bg=self.bg_color,
+              text="Theme name",
+              fg=self.foreground_color).grid(row=7, column=0, sticky=E)
+        theme_name_field = Entry(theme_frame,
+                              width=8,
+                              exportselection=0,
+                              bg="white")
+        theme_name_field.insert(END, self.selected_theme.get())
+        theme_name_field.grid(row=7, column=1, sticky=W, padx=3)
 
         def save():
-            print(":",show_errors_var.get(),":")
-            if show_errors_var.get() == "1":
+            if show_errors_var.get() == "Yes":
                 settings.set("DEFAULT", "show_errors", "True")
                 self.show_errors=True
             else:
                 settings.set("DEFAULT", "show_errors", "False")
                 self.show_errors=False
 
+            theme.set(self.selected_theme.get(), "background", bg_field.get())
+            theme.set(self.selected_theme.get(), "secondary_background", alt_bg_field.get())
+            theme.set(self.selected_theme.get(), "button_color", butt_field.get())
+            theme.set(self.selected_theme.get(), "active_button_color", active_butt_field.get())
+            theme.set(self.selected_theme.get(), "button_foreground", butt_fg_field.get())
+            theme.set(self.selected_theme.get(), "foreground", fg_field.get())
+            theme.set("selected", "name", self.selected_theme.get())
+
+            self.bg_color=bg_field.get()
+            self.second_bg_color=alt_bg_field.get()
+            self.butt_color=butt_field.get()
+            self.active_butt_color=active_butt_field.get()
+            self.butt_fg_color=butt_fg_field.get()
+            self.foreground_color=fg_field.get()
+
+            #this might be implemented later
+            '''self.god_window.config(bg=self.bg_color)
+            self.toolbar_frame.config(bg=self.second_bg_color)
+            self.log_frame.config(bg=self.bg_color)
+            self.info_frame.config(bg=self.bg_color)
+            self.left_hand_frame.config(bg=self.bg_color)
+            self.right_hand_frame.config(bg=self.bg_color)'''
+
             try:
+                with open('theme.ini', 'w') as new_theme:
+                    theme.write(new_theme)
+                    theme.update()
+                    new_theme.close()
+
                 with open('settings.ini', 'w') as new_configfile:
                     settings.write(new_configfile)
-                    tkinter.messagebox.showinfo("Saved", "Saved Successfully")
+                    tkinter.messagebox.showinfo("Saved",
+                                                "Saved successfully\nPlease restart dolphin to make changes take full effect")
                     settings.update()
                     new_configfile.close()
+
+                    self.bg_color=bg_field.get()
+                    self.second_bg_color=alt_bg_field.get()
+                    self.butt_color=butt_field.get()
+                    self.active_butt_color=active_butt_field.get()
+                    self.butt_fg_color=butt_fg_field.get()
+                    self.foreground_color=fg_field.get()
+
+                    settings_window.destroy()
             except:
                 tkinter.messagebox.showerror("Error", "Could not save")
-            settings_window.destroy()
+                settings_window.destroy()
 
         def cancel():
             settings_window.destroy()
@@ -475,8 +688,8 @@ class GUI:
                              command=cancel,
                              bg=self.butt_color,
                              activebackground=self.active_butt_color)
-        connect_butt.pack(side=LEFT, padx=5)
-        cancel_butt.pack(side=RIGHT)
+        connect_butt.grid(column=0, row=0, padx=5)
+        cancel_butt.grid(column=1, row=0)
 
         settings_window.mainloop()
 
@@ -537,7 +750,7 @@ class GUI:
         connet_window.title("Manual Connect")
         connet_window.configure(bg=self.bg_color)
         #username
-        Label(connet_window, text="Username", bg=self.bg_color).grid(row=0, column=0, sticky='E')
+        Label(connet_window, text="Username", bg=self.bg_color, fg=self.foreground_color).grid(row=0, column=0, sticky='E')
         username_field=Entry(connet_window,
                          width=16,
                          exportselection=0,
@@ -546,7 +759,7 @@ class GUI:
         username_field.grid(row=0, column=1, sticky='W', pady=2)
 
         #ip
-        Label(connet_window, text="IP adresss", bg=self.bg_color).grid(row=1, column=0, sticky='E')
+        Label(connet_window, text="IP adresss", bg=self.bg_color, fg=self.foreground_color).grid(row=1, column=0, sticky='E')
         chat_server_field=Entry(connet_window,
                               width=16,
                               exportselection=0,
@@ -555,7 +768,7 @@ class GUI:
         chat_server_field.grid(row=1, column=1, pady=2)
 
         #port
-        Label(connet_window, text="Port", bg=self.bg_color).grid(row=2, column=0, sticky='E')
+        Label(connet_window, text="Port", bg=self.bg_color, fg=self.foreground_color).grid(row=2, column=0, sticky='E')
         port_field=Entry(connet_window,
                          width=5,
                          exportselection=0,
@@ -570,13 +783,15 @@ class GUI:
 
         def setIPv6():
             self.network_protocol.set("IPv6")
-        network_protocol_frame=LabelFrame(connet_window, text="Network Protocol", bg=self.bg_color)
+
+        network_protocol_frame=LabelFrame(connet_window, text="Network Protocol", bg=self.bg_color, fg=self.foreground_color)
         network_protocol_frame.grid(row=3, columnspan=2, pady=2)
         ipv4_butt = Radiobutton(network_protocol_frame,
                                 text="IPv4", variable=self.network_protocol,
                                 value='IPv4',
                                 command=setIPv4,
-                                bg = self.bg_color)
+                                bg = self.bg_color,
+                                fg=self.foreground_color)
         ipv4_butt.grid()
         ipv4_butt.select()
         ipv6_butt = Radiobutton(network_protocol_frame,
@@ -584,7 +799,8 @@ class GUI:
                                 variable=self.network_protocol,
                                 value='IPv6',
                                 command=setIPv6,
-                                bg=self.bg_color)
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
         ipv6_butt.grid()
 
         #buttons frame
@@ -665,36 +881,39 @@ class GUI:
     def build_window(self, window):
         window.title("Dolphin")
 
-        toolbar_frame = Frame(window, bg=self.second_bg_color)  # the toolbar frame
-        toolbar_frame.pack(side=TOP, fill=X)
+        #the "self." part of this is a legacy that does not really need to be removed but is has no purpose
+        #that is also the case with the self.god_window frame
+        self.god_window=Frame(window, bg=self.second_bg_color)
+        self.god_window.pack()
+        self.toolbar_frame = Frame(self.god_window, bg=self.second_bg_color)  # the toolbar frame
+        self.toolbar_frame.pack(side=TOP, fill=X)
 
-        right_hand_frame = Frame(window, bg=self.bg_color)  # splits the rest of the window in two
-        right_hand_frame.pack(side=RIGHT, fill=Y)
-        left_hand_frame = Frame(window, bg=self.bg_color)
-        left_hand_frame.pack(side=LEFT, fill=Y)
+        self.right_hand_frame = Frame(self.god_window, bg=self.bg_color)  # splits the rest of the window in two
+        self.right_hand_frame.pack(side=RIGHT, fill=Y)
+        self.left_hand_frame = Frame(self.god_window, bg=self.bg_color)
+        self.left_hand_frame.pack(side=LEFT, fill=Y)
 
-        info_frame = LabelFrame(right_hand_frame,  # creates the info frame
+        self.info_frame = LabelFrame(self.right_hand_frame,  # creates the info frame
                                 text="Connection information",
                                 bg=self.bg_color,
-                                )
-        info_frame.pack(pady=5, padx=5)
+                                fg=self.foreground_color)
+        self.info_frame.pack(pady=5, padx=5)
 
-        ad_frame = Frame(right_hand_frame, bg="black")  # the advertisment frame (optinal)
+        ad_frame = Frame(self.right_hand_frame, bg="black")  # the advertisment frame (optinal)
         ad_frame.pack(side=BOTTOM)
-        entry_frame = Frame(left_hand_frame, bg=self.bg_color)
-        entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
+        self.entry_frame = Frame(self.left_hand_frame, bg=self.bg_color)
+        self.entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
 
-        log_frame = Frame(left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
-        log_frame.pack(side=LEFT, fill=Y)
+        self.log_frame = Frame(self.left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
+        self.log_frame.pack(side=LEFT, fill=Y)
 
-        entry_marking = Label(entry_frame, text=">>>", bg=self.bg_color)  # the 3 arrows
-        entry_marking.pack(side=LEFT)
+        Label(self.entry_frame, text=">>>", bg=self.bg_color, fg=self.foreground_color).pack(side=LEFT)  # the 3 arrows
 
-        scroll = Scrollbar(log_frame, orient=VERTICAL)  # scroller
+        scroll = Scrollbar(self.log_frame, orient=VERTICAL)  # scroller
         scroll.pack(side=RIGHT, fill=Y, pady=5)
 
         self.log = StringVar()  # holds the data for the log widow
-        self.msg_log = Listbox(log_frame,  # the logframe
+        self.msg_log = Listbox(self.log_frame,  # the logframe
                                height=30, width=100,
                                bg="white",
                                selectbackground="white",
@@ -709,7 +928,7 @@ class GUI:
         scroll['command'] = self.msg_log.yview
 
         self.user_input = StringVar()
-        entry = Entry(entry_frame,  # the input field
+        entry = Entry(self.entry_frame,  # the input field
                       width=95,
                       highlightbackground="black",
                       bg="white",
@@ -726,15 +945,15 @@ class GUI:
         entry.bind('<Return>', entry_event_handler)  # makes enter key send message
         entry.pack(padx=5, pady=5, side=LEFT)
 
-        info_keys = [Label(info_frame, text="Server name:", bg=self.bg_color),
-                          Label(info_frame, text="IP:", bg=self.bg_color),
-                          Label(info_frame, text="Username:", bg=self.bg_color),
-                          Label(info_frame, text="Level:", bg=self.bg_color)]
+        info_keys = [Label(self.info_frame, text="Server name:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="IP:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="Username:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="Level:", bg=self.bg_color, fg=self.foreground_color)]
 
-        info_values = [Label(info_frame, text="placeholder", bg=self.bg_color),
-                            Label(info_frame, textvariable=self.chat_server, bg=self.bg_color),
-                            Label(info_frame, textvariable=self.username, bg=self.bg_color),
-                            Label(info_frame, text="placeholder", bg=self.bg_color)]
+        info_values = [Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, textvariable=self.chat_server, bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, textvariable=self.username, bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color)]
 
         for n in range(len(info_keys)):
             info_keys[n].grid(row=n, column=0, sticky=E)
@@ -757,7 +976,7 @@ class GUI:
 
         self.c_or_dc = StringVar()
         self.c_or_dc.set("Connect")
-        connect_butt = Button(toolbar_frame,
+        connect_butt = Button(self.toolbar_frame,
                               textvariable=self.c_or_dc,
                               command=conn_or_disconn,
                               bg=self.butt_color,
@@ -766,7 +985,7 @@ class GUI:
                               fg=self.butt_fg_color,
                               activebackground=self.active_butt_color)
 
-        self.profile_butt = Menubutton(toolbar_frame,
+        self.profile_butt = Menubutton(self.toolbar_frame,
                                        text="Profiles",
                                        relief=RAISED,
                                        bd=2,
@@ -816,7 +1035,7 @@ class GUI:
             self.add_profile_to_butt_cascade(label)
         #done adding the pre-existing profiles
 
-        settings_butt = Button(toolbar_frame,
+        settings_butt = Button(self.toolbar_frame,
                                text="Settings",
                                height=2,
                                bd=2,
@@ -852,7 +1071,6 @@ class GUI:
         self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[n].call)
 
     def __init__(self, window):
-
         self.chat_server = StringVar()
         self.port = IntVar()
         self.username = StringVar()
@@ -862,21 +1080,22 @@ class GUI:
         theme = configparser.ConfigParser()
         theme.read("theme.ini")
 
-        selected_theme = StringVar()
-        selected_theme.set(theme.get("selected", "name"))
+        self.selected_theme = StringVar()
+        self.selected_theme.set(theme.get("selected", "name"))
 
-        self.bg_color = theme.get(selected_theme.get(), "background")
-        self.second_bg_color = theme.get(selected_theme.get(), "secondary_background")
-        self.butt_color = theme.get(selected_theme.get(), "button_color")
-        self.active_butt_color = theme.get(selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
-        self.butt_fg_color = theme.get(selected_theme.get(), "button_foreground")
-        #self.font = font.Font(family=theme.get(selected_theme.get(), "font"), size=10)
+        self.bg_color = theme.get(self.selected_theme.get(), "background")
+        self.second_bg_color = theme.get(self.selected_theme.get(), "secondary_background")
+        self.butt_color = theme.get(self.selected_theme.get(), "button_color")
+        self.active_butt_color = theme.get(self.selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
+        self.butt_fg_color = theme.get(self.selected_theme.get(), "button_foreground")
+        self.foreground_color = theme.get(self.selected_theme.get(), "foreground")
+        #self.font = font.Font(family=theme.get(self.selected_theme.get(), "font"), size=10) this is also a legacy
 
-        self.settings_file = configparser.ConfigParser()
-        self.settings_file.read("settings.ini")
-        if self.settings_file.get("DEFAULT", "show_errors") == "True":
+        settings_file = configparser.ConfigParser()
+        settings_file.read("settings.ini")
+        if settings_file.get("DEFAULT", "show_errors") == "True":
             self.show_errors=True
-        elif self.settings_file.get("DEFAULT", "show_errors") == "False":
+        elif settings_file.get("DEFAULT", "show_errors") == "False":
             self.show_errors=False
         else:
             raise configparser.NoOptionError#not quite the right error but hey
