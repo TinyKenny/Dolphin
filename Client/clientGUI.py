@@ -7,7 +7,7 @@ import threading
 import configparser
 import time
 
-version="Version 0.0.1.1 ALPHA"
+version="Version 0.0.1.2 ALPHA"
 global gui_obj #make this cunt global so that it can be used in ProfileButtons
 
 class ProfileButtons:
@@ -490,6 +490,28 @@ class GUI:
             settings_window.destroy()
             return 1
 
+        timeout_frame = LabelFrame(settings_window,
+                                 bg=self.bg_color,
+                                 text="Networks",
+                                 fg=self.foreground_color)
+        timeout_frame.pack(padx=5)
+
+        Label(timeout_frame,
+              bg=self.bg_color,
+              text="Connection timeout[ms]",
+              fg=self.foreground_color).grid(row=0, column=0, sticky=E)
+
+        timeout_spinbox=Spinbox(timeout_frame,
+                                activebackground=self.active_butt_color,
+                                buttonbackground=self.butt_color,
+                                from_=1,
+                                to=10000,
+                                increment=500)
+        timeout_spinbox.grid(row=0, column=1, sticky=W)
+
+        timeout_spinbox.delete(0, END)
+        timeout_spinbox.insert(END, settings.get("DEFAULT", "timeout_milliseconds"))
+
         theme_frame = LabelFrame(settings_window,
                                  bg=self.bg_color,
                                  text="Theme",
@@ -612,6 +634,8 @@ class GUI:
         theme_name_field.insert(END, self.selected_theme.get())
         theme_name_field.grid(row=7, column=1, sticky=W, padx=3)
 
+
+
         def save():
             if show_errors_var.get() == "Yes":
                 settings.set("DEFAULT", "show_errors", "True")
@@ -619,6 +643,13 @@ class GUI:
             else:
                 settings.set("DEFAULT", "show_errors", "False")
                 self.show_errors=False
+
+            try:
+                self.timeout=int(timeout_spinbox.get())
+            except:
+                timeout_spinbox.delete(0, END)
+                return 0
+            settings.set("DEFAULT", "timeout_milliseconds", str(self.timeout))
 
             theme.set(self.selected_theme.get(), "background", bg_field.get())
             theme.set(self.selected_theme.get(), "secondary_background", alt_bg_field.get())
@@ -718,16 +749,15 @@ class GUI:
         except ConnectionError as e:  # this will happen when the server is shut down
             self.print_to_log("Disconnected from: " + self.chat_server.get())
             self.chat_server.set('')
+            self.username.set('')
         except OSError as e:
             if self.show_errors:
                 self.print_to_log(e)
-            if (str(e)[0:11]=="[Errno 107]") | (str(e)[0:16]=="[WinError 10057]"):
-                self.print_to_log("Please check if server is running")
 
     def print_to_log(self, msg):
         self.msg_log.insert(END, msg)
         if self.msg_log.size() > 30:
-            self.msg_log.yview_scroll(1, UNITS)
+            self.msg_log.yview_scroll(1, UNITS) #scrolls 1 line down
 
     def read_input(self):
         if self.user_input.get() == '':
@@ -849,6 +879,7 @@ class GUI:
         connet_window.mainloop()
 
     def disconnect(self):
+        self.s.shutdown(0)
         self.s.close()
         self.username.set('')
         #self.chat_server.set('') this is done in self.recieve_messages()
@@ -864,24 +895,26 @@ class GUI:
         else:
             self.print_to_log("Corrupt profile or invalid input")
         try:
+            self.s.settimeout(self.timeout)
             self.s.connect((self.chat_server.get(), self.port.get()))
+            self.s.settimeout(None)
             self.print_to_log(("Connected to: " + self.chat_server.get()))
             data = self.s.recv(2048)  # recieve the message of the day
             self.print_to_log("Message of the day: " + str(data.decode('utf-8')))  # currently just a random quote
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
+            reciever = threading.Thread(target=self.recieve_messages, daemon=0)
+            reciever.start()
+            self.c_or_dc.set("Disconnect")
         except socket.error as e:  # couldn't connect to given IP + port
             self.print_to_log(("Cound not connect to " + self.chat_server.get() + ":" + str(self.port.get())))
             if self.show_errors:
                 self.print_to_log(str(e))
 
-        reciever = threading.Thread(target=self.recieve_messages, daemon=0)
-        reciever.start()
-        self.c_or_dc.set("Disconnect")
-
     def build_window(self, window):
         window.title("Dolphin")
 
-        #the "self." part of this is a legacy that does not really need to be removed but is has no purpose
+        #Q:why are all the frames "self."?
+        #A:it is a legacy that does not really need to be removed but is serves no purpose
         #that is also the case with the self.god_window frame
         self.god_window=Frame(window, bg=self.second_bg_color)
         self.god_window.pack()
@@ -906,8 +939,15 @@ class GUI:
 
         self.log_frame = Frame(self.left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
         self.log_frame.pack(side=LEFT, fill=Y)
+        #the following objects actuallly need to have the "self." part
 
-        Label(self.entry_frame, text=">>>", bg=self.bg_color, fg=self.foreground_color).pack(side=LEFT)  # the 3 arrows
+        #Label(self.entry_frame, text=">>>", bg=self.bg_color, fg=self.foreground_color).pack(side=RIGHT)  # the 3 arrows
+        Button(self.entry_frame,
+               text=" Send ",
+               bg=self.butt_color,
+               activebackground=self.active_butt_color,
+               fg=self.butt_fg_color,
+               command=self.read_input).pack(side=RIGHT)
 
         scroll = Scrollbar(self.log_frame, orient=VERTICAL)  # scroller
         scroll.pack(side=RIGHT, fill=Y, pady=5)
@@ -1076,29 +1116,37 @@ class GUI:
         self.username = StringVar()
         self.network_protocol = StringVar()
         self.profile_button_selections=[]
-        
-        theme = configparser.ConfigParser()
-        theme.read("theme.ini")
 
-        self.selected_theme = StringVar()
-        self.selected_theme.set(theme.get("selected", "name"))
+        try:
+            theme = configparser.ConfigParser()
+            theme.read("theme.ini")
 
-        self.bg_color = theme.get(self.selected_theme.get(), "background")
-        self.second_bg_color = theme.get(self.selected_theme.get(), "secondary_background")
-        self.butt_color = theme.get(self.selected_theme.get(), "button_color")
-        self.active_butt_color = theme.get(self.selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
-        self.butt_fg_color = theme.get(self.selected_theme.get(), "button_foreground")
-        self.foreground_color = theme.get(self.selected_theme.get(), "foreground")
-        #self.font = font.Font(family=theme.get(self.selected_theme.get(), "font"), size=10) this is also a legacy
+            self.selected_theme = StringVar()
+            self.selected_theme.set(theme.get("selected", "name"))
 
-        settings_file = configparser.ConfigParser()
-        settings_file.read("settings.ini")
-        if settings_file.get("DEFAULT", "show_errors") == "True":
-            self.show_errors=True
-        elif settings_file.get("DEFAULT", "show_errors") == "False":
-            self.show_errors=False
-        else:
-            raise configparser.NoOptionError#not quite the right error but hey
+            self.bg_color = theme.get(self.selected_theme.get(), "background")
+            self.second_bg_color = theme.get(self.selected_theme.get(), "secondary_background")
+            self.butt_color = theme.get(self.selected_theme.get(), "button_color")
+            self.active_butt_color = theme.get(self.selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
+            self.butt_fg_color = theme.get(self.selected_theme.get(), "button_foreground")
+            self.foreground_color = theme.get(self.selected_theme.get(), "foreground")
+            # self.font = font.Font(family=theme.get(self.selected_theme.get(), "font"), size=10) this is also a legacy
+        except:
+            tkinter.messagebox.showerror("Error", "Corrupt theme file")
+        try:
+            settings_file = configparser.ConfigParser()
+            settings_file.read("settings.ini")
+
+            if settings_file.get("DEFAULT", "show_errors") == "True":
+                self.show_errors = True
+            elif settings_file.get("DEFAULT", "show_errors") == "False":
+                self.show_errors = False
+            else:
+                raise configparser.NoOptionError  # not quite the right error but hey
+
+            self.timeout= settings_file.getint("DEFAULT", "timeout_milliseconds")/1000 # det skall vara i millisekunder
+        except:
+            tkinter.messagebox.showerror("Error", "Corrupt settings file")
 
         self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
                         "/quit": self.spacer(20, "/quit") + "exit program",
