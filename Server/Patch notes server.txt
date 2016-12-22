@@ -21,4 +21,16 @@ v 0.2.0.1
     +Fixed a bug that caused timestamps to prevented the admin-rights check of the user that uses "/kick"
 +Increased gluten tolerance by 13%
 
-
+v 0.3.0.0
+~(The number for bugfix-updates will now only be reset on major patches)
++Added the option to remove a profile when in profile select.
++Started implementing the debug-logging:
+    +Logs removal of profiles, and selected profile.
+    +logs the settings of the selected profile.
+    +Logs unexpected errors in the listener.
+    +Logs unexpected errors in the sender.
+    +Logs usage of commands. Does not log whether the command was successfully executed or not.
++Bugfixes:
+    ~Fixed a bug that caused the server to send empty messages "from" a disconnected user.
+    +The server now only stores the decoded username.
+    ~Updated the welcome message.

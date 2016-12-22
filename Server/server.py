@@ -7,6 +7,13 @@ import configparser
 import socketserver
 from sys import platform
 from unicurses import *
+from json import load, dump #For the implementation of name reservation, whitelist and blacklist.
+                            #For usage, see part 19.2 of the official python 3.5.2 documentaion.
+                            #I'd suggest storing user details in a dictionary, containing dictionaries:
+                            #{str(USERNAME):{user details}}
+
+
+#Code that has been commented out is either something that has been unimplemented, but not cleaned up yet, or something that is not implemented yet.
 
 class CommonMessageHoster:
     common_message=""
@@ -18,17 +25,18 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   "FIGHT ON GERUDIAN!!!",
                                   "I can't believe what I'm seeing!",
                                   "You can fight by my side anytime, Gaurdian",
-                                  "Is english class canceld tomorrow?",
-                                  "Livet är inte optimalt.",
+                                  "This won't end well!",
                                   "Show your support! Purchase Dolphin Pro - Premium edition today!",
-                                  "Skolan måste vara tråkig, annars jobbar man inte."]
+                                  "Livet är inte optimalt.",
+                                  "Skolan måste vara tråkig, annars jobbar man inte.",
+                                  "Det är... Ingen gör omprov."]
         self.request.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
         username = (self.request.recv(2048)).decode("utf-8")
         raddr = getRaddr(self.request)
         
         while username in taken_usernames or username.lower() == "server announcement" or username.lower() == "server announcement:":
             self.request.send(str.encode("That username is already taken. Please select a new one."))
-            username = (self.request.recv(2048))
+            username = (self.request.recv(2048)).decode("utf-8")
         taken_usernames[username] = False
         
         listener= threading.Thread(target=listenToClient,
@@ -80,7 +88,9 @@ def getRaddr(conn):
     return raddr
 
 def interpret_commands(conn, username):
-    global taken_usernames, help, root_help, root_pass, logwin
+    global taken_usernames, help, root_help, root_pass, logwin, server
+    with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+        debuglog.write(time.strftime("[%H:%M:%S] ")+str((threading.current_thread()).name)+" used command: "+cmh.common_message[(12+len(username)):]+"\n")
     if taken_usernames[username]: #root commands
         if cmh.common_message[11:]==username+":/terminate":
             waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
@@ -88,8 +98,9 @@ def interpret_commands(conn, username):
                 chatlog.write(time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
             wrefresh(logwin)
             server.shutdown()
-            server.close_server()
-            return("")
+            server.server_close()
+            endwin()
+            return("pop")
         elif cmh.common_message[11:]==username+":/users -show":
             users=cmh.common_message+"\nCurrently connected users:"
             for u in taken_usernames:
@@ -135,7 +146,7 @@ def listenToClient(conn, username):
         try:
             message_data=(conn.recv(2048)).decode("utf-8")
             if message_data == "":
-                break
+                raise ConnectionResetError
             cmh.common_message = time.strftime("[%H:%M:%S] ") + username + ":" + message_data
             waddstr(logwin, "\n"+cmh.common_message)
             wrefresh(logwin)
@@ -170,6 +181,10 @@ def listenToClient(conn, username):
             thread_manager.notify_all()
             thread_manager.release()
             break
+        except Exception as e: #catches exceptions that are not "supposed" to happen, and logs them
+            waddstr(logwin, "\n"+time.strftime("[%H:%M:%S] ")+"An unexpected error has occurred! "+str((threading.current_thread()).name))
+            with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                debuglog.write(time.strftime("[%H:%M:%S] ")+str((threading.current_thread()).name)+":\n"+str(e)+"\n")
 
 def make_new_profile(config):
     new_prof_box=newwin(20,60,int(5),15)
@@ -279,6 +294,7 @@ def make_temp_profile():
 def print_menu(prof_select_win, highlight):
     x = 2
     y = 2
+    wclear(prof_select_win)
     box(prof_select_win, 0, 0)
     for i in range(0, n_choices):
         if (highlight == i + 1):
@@ -315,6 +331,10 @@ def sendToClient(conn, listener, username):
                 pass
             except BrokenPipeError:
                 pass
+            except Exception as e: #catches exceptions that are not "supposed" to happen, and logs them
+                waddstr(logwin, "\n"+time.strftime("[%H:%M:%S] ")+"An unexpected error has occurred! "+str((threading.current_thread()).name))
+                with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                    debuglog.write(time.strftime("[%H:%M:%S] ")+str((threading.current_thread()).name)+":\n"+str(e)+"\n")
 
 def server_input():
     global inpwin, logwin, taken_usernames
@@ -327,13 +347,16 @@ def server_input():
         waddstr(logwin,"\n"+cmh.common_message)
         wrefresh(logwin)
         if server_message.startswith("/"): #A lightweight, slightly modified verision of interpret_commands.
-            if server_message == "/terminate":
+            with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                debuglog.write(time.strftime("[%H:%M:%S] ")+"Server host used command: "+server_message+"\n")
+            if server_message == "/terminate": #currently does not instantly shut down server, if there are users connected.
                 waddstr(logwin,"\n"+time.strftime("[%H:%M:%S] ")+"Terminating server.")
                 with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
                     chatlog.write(time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
                 wrefresh(logwin)
                 server.shutdown()
-                server.server_close()
+                server.close_server()
+                endwin()
             elif server_message == "/users -show":
                 users = "\nCurrently connected users:"
                 for u in taken_usernames:
@@ -403,22 +426,32 @@ else:
 		os.makedirs("./serverlogs/debug")
 	if not os.path.exists("./serverlogs/chatlogs"):
 		os.makedirs("./serverlogs/chatlogs")
+
+version="0.3.0.0"
+with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+    debuglog.write(time.strftime("[%H:%M:%S] ")+"Server started: v"+version+"\n")
+
 with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
 	chatlog.write("Server started.\n")
-
+maxx=90
+maxy=30
 if platform == "win32":
-	os.system("mode con: cols=90 lines=30")	
+	os.system("mode con: cols="+str(maxx)+" lines="+str(maxy))	
 elif platform == "linux":
-	os.system("set noglob; setenv COLUMNS '90'; setenv LINES '30'; unset noglob")
+	os.system("set noglob; setenv COLUMNS '"+str(maxx)+"'; setenv LINES '"+str(maxy)+"'; unset noglob")
 
-WIDTH = 30
-HEIGHT = 10
 config = configparser.ConfigParser()
 config.read("config_server.ini")
 choices = config.sections()
-if len(choices) < 5:
-	choices.append("New")
+if len(choices) < 10:
+	choices.append("New profile")
 choices.append("Temp. profile")
+choices.append("Remove profile")
+remove_mode = False
+name_len=0
+for prof in choices:
+    if name_len < len(prof):
+        name_len=len(prof)
 n_choices = len(choices)
 highlight = 1
 profile = 0
@@ -429,10 +462,10 @@ clear()
 noecho()
 cbreak()
 curs_set(0)
-startx = int((90 - WIDTH) / 2)
-starty = int((30 - HEIGHT) / 2)
+startx = int((maxx-name_len-4) / 2)
+starty = int((maxy-n_choices-4) / 2)
 
-prof_select_win = newwin(HEIGHT, WIDTH, starty, startx)
+prof_select_win = newwin(n_choices+4, name_len+4, starty, startx)
 keypad(prof_select_win, True)
 mvaddstr(0, 0, "Use the arrow keys to navigate, press enter to select.")
 mvaddstr(1, 0, "Select a pre-existing configuration profile, or create a new profile")
@@ -453,11 +486,38 @@ while True:
             highlight = 1
         else:
             highlight += 1
-    elif c == 10:   # ENTER is pressed
+    elif c == 10: #10 means the "enter" key.
         profile = choices[highlight-1]
-        clrtoeol()
-        refresh()
-        break
+        if profile == "Remove profile":
+            choices.remove("New profile")
+            choices.remove("Temp. profile")
+            choices.remove("Remove profile")
+            choices.append("Select profile")
+            n_choices = len(choices)
+            highlight = 1
+            remove_mode = True
+        elif remove_mode: #yes, deleting profiles is now a thing.
+            if profile == "default":
+                mvaddstr(29,0, "You can't remove the default profile!")
+                refresh()
+            elif profile == "Select profile":
+                choices.remove("Select profile")
+                choices.append("New profile")
+                choices.append("Temp. profile")
+                choices.append("Remove profile")
+                n_choices = len(choices)
+                highlight = 1
+                remove_mode = False
+            else:
+                with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                    debuglog.write(time.strftime("[%H:%M:%S] ")+"Deleted profile: "+profile+"\n")
+                choices.remove(profile)
+                n_choices = len(choices)
+                highlight = 1
+        else:
+            with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                debuglog.write(time.strftime("[%H:%M:%S] ")+"Selected profile: "+profile+"\n")
+            break
     else:
         mvaddstr(29, 0, str.format("Character pressed is = {0}", c))
         clrtoeol()
@@ -468,16 +528,21 @@ clear()
 echo()
 curs_set(1)
 refresh()
-if profile == "New":
+if profile == "New profile":
     profile,port,max_population,root_pass = make_new_profile(config)
-elif profile == "Manual":
+elif profile == "Temp. profile":
     network_protocol,port,max_population,root_pass = make_temp_profile(config)
 else:
     network_protocol=str(config[profile]["network_protocol"])
     port=int(config[profile]["port"])
     max_population=int(config[profile]["max_population"])
     root_pass=str(config[profile]["root_pass"])
-version="0.2.0.1"
+with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+    debuglog.write(time.strftime("[%H:%M:%S] ")+"Using: "+network_protocol
+                                               +" Port: "+str(port)
+                                               +" Max population: "+str(max_population)
+                                               +" Root password: "+root_pass+"\n")
+
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
 client_handlers=[]
@@ -516,23 +581,20 @@ scrollok(logwin,1)
 wrefresh(logbox)
 wrefresh(inpbox)
 refresh()
-
-
-
-if __name__ == "__main__":
     
-    server = ThreadedTCPServer((host, port), ThreadedTCPRequestHandler)
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.daemon = False
-    server_thread.start()
-    waddstr(logwin, str("Running Dolpin v"+version+
-                        "\nMax population not implemented yet."+
-                        "\nListening @ "+serverIP+":"+str(port)+
-                        "\nRoot password is: "+root_pass))
-    wrefresh(logwin)
-    
-    serverinput=threading.Thread(target=server_input,daemon=True)
-    serverinput.start()
+server = ThreadedTCPServer((host, port), ThreadedTCPRequestHandler)
+server_thread = threading.Thread(target=server.serve_forever)
+server_thread.daemon = False
+server_thread.start()
+waddstr(logwin, str("Running Dolpin v"+version+
+                    "\nMax population not implemented yet."+
+                    "\nListening @ "+serverIP+":"+str(port)+
+                    "\nRoot password is: "+root_pass))
+wrefresh(logwin)
+
+serverinput=threading.Thread(target=server_input,daemon=True)
+serverinput.start()
+
     
 
 
