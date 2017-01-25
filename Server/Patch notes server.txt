@@ -34,3 +34,13 @@ v 0.3.0.0
     ~Fixed a bug that caused the server to send empty messages "from" a disconnected user.
     +The server now only stores the decoded username.
     ~Updated the welcome message.
+
+
+v 0.3.1.0
++ Cleaning the code
++ Optimization
++ Fixen an unhandled exception when a user would disconnect wile selecting username
++ The chatlog will now log the start time of the server
++ Message of the day/Welcome message will now be recived after the username has been communicated
++ Debug log now loggs platform
++ Debug log is now being utilized more

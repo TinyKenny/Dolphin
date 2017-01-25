@@ -21,6 +21,7 @@ class CommonMessageHoster:
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         global taken_usernames, logwin
+
         random_welcome_message = ["You want the crucible? I am the crucible.",
                                   "FIGHT ON GERUDIAN!!!",
                                   "I can't believe what I'm seeing!",
@@ -30,14 +31,21 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   "Livet är inte optimalt.",
                                   "Skolan måste vara tråkig, annars jobbar man inte.",
                                   "Det är... Ingen gör omprov."]
-        self.request.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
-        username = (self.request.recv(2048)).decode("utf-8")
+
+        self.request.send(str.encode("[DEV-MSG]Numera kommer message of the day efter att man fixat användarnamn :-P"))
         raddr = getRaddr(self.request)
-        
-        while username in taken_usernames or username.lower() == "server announcement" or username.lower() == "server announcement:":
-            self.request.send(str.encode("That username is already taken. Please select a new one."))
+        try:
             username = (self.request.recv(2048)).decode("utf-8")
-        taken_usernames[username] = False
+            while username in taken_usernames or username.lower().startswith("server announcement"):
+                self.request.send(str.encode("That username is already taken. Please select a new one."))
+                username = (self.request.recv(2048)).decode("utf-8")
+            taken_usernames[username] = False
+        except ConnectionResetError as e:
+            with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
+                debuglog.write(time.strftime("[%H:%M:%S] ") + raddr + "disconnected while selecting a username\n" + str(e) + "\n")
+                return 0
+
+        self.request.send(str.encode(random_welcome_message[random.randint(0, (len(random_welcome_message) - 1))]))
         
         listener= threading.Thread(target=listenToClient,
                                   daemon=True,
@@ -49,12 +57,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   name="S-" + username)
         listener.start()
         sender.start()
-        
-        while listener.is_alive():
-            time.sleep(0.1)
+
+        listener.join() #will wait here until lister is dead
         if username in taken_usernames:
             del taken_usernames[username]
-        waddstr(logwin,"\nDisconnected from " + raddr)
+        waddstr(logwin,"\nDisconnected from " + raddr + " as " + username)
         wrefresh(logwin)
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -85,10 +92,12 @@ def getRaddr(conn):
         waddstr(logwin,"[Error] Cannot identify raddr")
         wrefresh(logwin)
         raddr="[Error] Cannot identify raddr"
+        with open("./serverlogs/debug/" + str(datetime.date.today()) + ".txt", "a") as debuglog:
+            debuglog.write(time.strftime("[%H:%M:%S] ")+"Could not identify raddr for thread "+str(threading.current_thread())+"\n")
     return raddr
 
 def interpret_commands(conn, username):
-    global taken_usernames, help, root_help, root_pass, logwin, server
+    global taken_usernames, user_help, root_help, root_pass, logwin, server
     with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
         debuglog.write(time.strftime("[%H:%M:%S] ")+str((threading.current_thread()).name)+" used command: "+cmh.common_message[(12+len(username)):]+"\n")
     if taken_usernames[username]: #root commands
@@ -122,23 +131,26 @@ def interpret_commands(conn, username):
         return("")
     if cmh.common_message[11:]==username+":/help":
         if taken_usernames[username]:
-            conn.send(str.encode(help+root_help))
+            conn.send(str.encode(user_help+root_help))
             return("")
         else:
-            conn.send(str.encode(help))
+            conn.send(str.encode(user_help))
             return("")
     elif cmh.common_message[11:].startswith(username+":/me"):
         return (time.strftime("[%H:%M:%S] ")+username+cmh.common_message[11+len(username+":/me"):])
     return(cmh.common_message)
 
 def listenToClient(conn, username):
-    global taken_usernames, help, root_help, root_pass, logwin
-    raddr=""
-    try:
-        raddr=getRaddr(conn)
-    except:
-        raddr = getRaddr(conn)
+    global taken_usernames, user_help, root_help, root_pass, logwin
+    raddr=getRaddr(conn)
     cmh.common_message = time.strftime("[%H:%M:%S] ")+ username + " connected"
+
+    with open("./serverlogs/chatlogs/" + str(datetime.date.today()) + ".txt", "a") as chatlog:
+        chatlog.write(cmh.common_message + "\n")
+
+    with open("./serverlogs/debug/" + str(datetime.date.today()) + ".txt", "a") as debuglog:
+        debuglog.write(time.strftime("[%H:%M:%S] ")+raddr + " connected as "+username+"\n")
+
     thread_manager.acquire()
     thread_manager.notify_all()
     thread_manager.release()
@@ -355,8 +367,9 @@ def server_input():
                     chatlog.write(time.strftime("[%H:%M:%S] ")+"Terminating server.\n")
                 wrefresh(logwin)
                 server.shutdown()
-                server.close_server()
+                server.server_close()
                 endwin()
+                os._exit(0)
             elif server_message == "/users -show":
                 users = "\nCurrently connected users:"
                 for u in taken_usernames:
@@ -374,7 +387,7 @@ def server_input():
                     wrefresh(logwin)
             elif server_message == "/help":
                 cmh.common_message=""
-                waddstr(logwin,"\n"+help+root_help+server_help)
+                waddstr(logwin,"\n"+user_help+root_help+server_help)
                 wrefresh(logwin)
             elif server_message.startswith("/me"):
                 cmh.common_message=time.strftime("[%H:%M:%S] ")+username+server_message[len("/me"):]
@@ -427,12 +440,12 @@ else:
 	if not os.path.exists("./serverlogs/chatlogs"):
 		os.makedirs("./serverlogs/chatlogs")
 
-version="0.3.0.0"
+version="0.3.1.0"
 with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
     debuglog.write(time.strftime("[%H:%M:%S] ")+"Server started: v"+version+"\n")
 
 with open("./serverlogs/chatlogs/"+str(datetime.date.today())+".txt","a") as chatlog:
-	chatlog.write("Server started.\n")
+	chatlog.write(time.strftime("[%H:%M:%S] ")+"Server started.\n")
 maxx=90
 maxy=30
 if platform == "win32":
@@ -538,10 +551,12 @@ else:
     max_population=int(config[profile]["max_population"])
     root_pass=str(config[profile]["root_pass"])
 with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
-    debuglog.write(time.strftime("[%H:%M:%S] ")+"Using: "+network_protocol
-                                               +" Port: "+str(port)
-                                               +" Max population: "+str(max_population)
-                                               +" Root password: "+root_pass+"\n")
+    debuglog.write(time.strftime("[%H:%M:%S] ")+"INFO DUMP"
+                                               +"\nUsing: "+network_protocol
+                                               +"\nPort: "+str(port)
+                                               +"\nMax population: "+str(max_population)
+                                               +"\nRoot password: "+root_pass
+                                               +"\nPlatform: "+platform+"\n")
 
 host='0.0.0.0'
 serverIP="placeholder4serverIP"
@@ -551,7 +566,7 @@ lock = threading.Lock()
 thread_manager = threading.Condition(lock) #tänk att detta är en manager som trådarna måste ha närvanade när det gör saker
 taken_usernames=dict()
 taken_usernames["SERVER"]=True
-help=""
+user_help=""
 root_help="ADMIN COMMANDS:"
 server_help="\nSEVER COMMANDS:"
 command_dict={"/help":"View this message.",
@@ -564,7 +579,7 @@ server_command_dict={"/promote [user]":"Grants [user] admin rights",
                      "/demote [user]":"Removes admin rights from [user]"}
 
 for command in command_dict:
-    help+=command+" "*(20-len(command))+command_dict[command]+"\n"
+    user_help+=command+" "*(20-len(command))+command_dict[command]+"\n"
 for command in root_command_dict:
     root_help+="\n"+command+" "*(20-len(command))+root_command_dict[command]
 for command in server_command_dict:
@@ -594,11 +609,3 @@ wrefresh(logwin)
 
 serverinput=threading.Thread(target=server_input,daemon=True)
 serverinput.start()
-
-    
-
-
-
-
-
-
