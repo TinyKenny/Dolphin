@@ -1,0 +1,6 @@
+{
+    "DEFAULT": {
+        "timeout_milliseconds": "300",
+        "show_errors": true
+    }
+}

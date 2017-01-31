@@ -1,0 +1,32 @@
+{
+    "asdfasdf": {
+        "ip": "localhost",
+        "network_protocol": "IPv4",
+        "port": "5555",
+        "username": "tiny"
+    },
+    "Albap's": {
+        "ip": "127.0.0.1",
+        "network_protocol": "IPv4",
+        "port": "5555",
+        "username": "Bamlos"
+    },
+    "test": {
+        "ip": "127.0.0.1",
+        "network_protocol": "IPv4",
+        "port": 5555,
+        "username": "bob"
+    },
+    "root": {
+        "ip": "127.0.0.1",
+        "network_protocol": "IPv4",
+        "port": 5555,
+        "username": "root"
+    },
+    "default": {
+        "ip": "127.0.0.1",
+        "network_protocol": "IPv4",
+        "port": 5555,
+        "username": "bob"
+    }
+}

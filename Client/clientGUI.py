@@ -6,16 +6,17 @@ import os
 import threading
 import configparser
 import time
+import json
 
-version="Version 0.0.1.2 ALPHA"
-global gui_obj #make this cunt global so that it can be used in ProfileButtons
+#server skickar version till klient, sen skickar klient version till server
+
+
+version="0.0.2.4"
+global gui_obj #make this object global so that it can be used in ProfileButtons
 
 class ProfileButtons:
     index=-1
     label=""
-
-    def get_index(self):
-        return self.index
 
     def __init__(self, index, label):
         self.index=index
@@ -23,12 +24,12 @@ class ProfileButtons:
 
 
     def call(self):
-        profiles = configparser.ConfigParser()
-        profiles.read("profiles.ini")
-        gui_obj.chat_server.set(profiles[self.label]["ip"])
-        gui_obj.network_protocol.set(profiles[self.label]["network_protocol"])
-        gui_obj.port.set(profiles[self.label]["port"])
-        gui_obj.username.set(profiles[self.label]["username"])
+        with open("profiles.json","r") as profile_file:
+            profiles = json.load(profile_file)
+        gui_obj.chat_server.set((profiles[self.label])["ip"])
+        gui_obj.network_protocol.set((profiles[self.label])["network_protocol"])
+        gui_obj.port.set((profiles[self.label])["port"])
+        gui_obj.username.set((profiles[self.label])["username"])
         gui_obj.connect()
         """
         när man klickar på "default" så kommer knappen att ropa på element [n] i knapp listan
@@ -38,8 +39,287 @@ class ProfileButtons:
         """
 
 class GUI:
+    def __init__(self, window):
+        self.chat_server = StringVar()
+        self.port = IntVar()
+        self.username = StringVar()
+        self.network_protocol = StringVar()
+        self.profile_button_selections=[]
+
+        try:
+            with open("theme.json", "r") as theme_file:
+                theme = json.load(theme_file)
+            
+            self.selected_theme = StringVar()
+            self.selected_theme.set((theme["selected"])["name"])
+            
+            self.bg_color = (theme[self.selected_theme.get()])["background"]
+            self.second_bg_color = (theme[self.selected_theme.get()])["secondary_background"]
+            self.butt_color = (theme[self.selected_theme.get()])["button_color"]
+            self.active_butt_color = (theme[self.selected_theme.get()])["active_button_color"] # # color when mouse hovers over it/clicks it
+            self.butt_fg_color = (theme[self.selected_theme.get()])["button_foreground"]
+            self.foreground_color = (theme[self.selected_theme.get()])["foreground"]
+            # self.font = font.Font(family=(theme[self.selected_theme.get()])["font"], size=10) #this is legacy stuff
+        except Exception as e:
+            tkinter.messagebox.showerror("Error", "Corrupt theme file")
+            print(e)
+        try:
+            with open("settings.json","r") as settings_file:
+                settings_variable = json.load(settings_file)
+
+            self.show_errors = (settings_variable["DEFAULT"])["show_errors"]
+            self.timeout = int((settings_variable["DEFAULT"])["timeout_milliseconds"])/1000
+        except Exception as e:
+            tkinter.messagebox.showerror("Error", "Corrupt settings file")
+            #print(e)
+
+        self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
+                        "/quit": self.spacer(20, "/quit") + "exit program",
+                             "/dc": self.spacer(20, "/dc") + "disconnect from server"}
+
+        self.build_window(window)
+        self.print_to_log("Version "+version+" ALPHA")
+
     def spacer(self, spaces, string):
         return ((spaces - len(string)) * " ")
+
+    def build_window(self, window):
+        window.title("Dolphin")
+
+        #Q:why are all the frames "self."?
+        #A:it is a legacy that does not really need to be removed but is serves no purpose
+        #that is also the case with the self.god_window frame
+        self.god_window=Frame(window, bg="black")
+        self.god_window.pack(fill=BOTH, expand=YES)
+        self.toolbar_frame = Frame(self.god_window, bg=self.second_bg_color)  # the toolbar frame
+        self.toolbar_frame.pack(side=TOP, fill=X)
+
+        self.right_hand_frame = Frame(self.god_window, bg=self.bg_color)  # splits the rest of the window in two
+        self.right_hand_frame.pack(side=RIGHT, fill=Y)
+        self.left_hand_frame = Frame(self.god_window, bg=self.bg_color)
+        self.left_hand_frame.pack(side=LEFT, fill=BOTH, expand=YES)
+
+        self.info_frame = LabelFrame(self.right_hand_frame,  # creates the info frame
+                                text="Connection information",
+                                bg=self.bg_color,
+                                fg=self.foreground_color)
+        self.info_frame.pack(pady=5, padx=5)
+
+        ad_frame = Frame(self.right_hand_frame, bg="black")  # the advertisment frame (optinal)
+        ad_frame.pack(side=BOTTOM)
+        
+        self.entry_frame = Frame(self.left_hand_frame, bg=self.bg_color)
+        self.entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
+        
+        self.log_frame = Frame(self.left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
+        self.log_frame.pack(side=TOP, fill=BOTH, expand=YES)
+
+        #the following objects actuallly need to have the "self." part
+        
+        #Label(self.entry_frame, text=">>>", bg=self.bg_color, fg=self.foreground_color).pack(side=RIGHT)  # the 3 arrows
+        Button(self.entry_frame,
+               text=" Send ",
+               bg=self.butt_color,
+               activebackground=self.active_butt_color,
+               fg=self.butt_fg_color,
+               command=self.read_input).pack(side=RIGHT)
+
+        scroll = Scrollbar(self.log_frame, orient=VERTICAL)  # scroller
+        scroll.pack(side=RIGHT, pady=5, fill=Y)
+
+        self.log = StringVar()  # holds the data for the log widow
+        self.msg_log = Listbox(self.log_frame,  # the logframe
+                               height=25, width=100,
+                               bg="white",
+                               selectbackground="white",
+                               selectforeground="black",
+                               selectmode=SINGLE,
+                               activestyle=NONE,
+                               listvariable=self.log,
+                               exportselection=0,
+                               highlightbackground="black",
+                               yscrollcommand=scroll.set)  # text thing
+        self.msg_log.pack(padx=5, pady=5, side=LEFT, fill=BOTH, expand=YES)
+        scroll['command'] = self.msg_log.yview
+
+        self.user_input = StringVar()
+        entry = Entry(self.entry_frame,  # the input field
+                      width=95,
+                      highlightbackground="black",
+                      bg="white",
+                      exportselection=0,
+                      textvariable=self.user_input)
+
+        def entry_event_handler(event, self=self):
+            self.read_input()
+            # the entry.bind() below insists to pass the event argument in the first variable slot
+            # even if the first one is "self"
+            # in order to allow the "self" argument to  be taken in the second slot is has to be done like this
+            # TL:DR python is stupid
+
+        entry.bind('<Return>', entry_event_handler)  # makes enter key send message
+        entry.pack(padx=5, pady=5, side=LEFT, fill=X, expand=YES)
+
+        info_keys = [Label(self.info_frame, text="Server name:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="IP:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="Username:", bg=self.bg_color, fg=self.foreground_color),
+                          Label(self.info_frame, text="Level:", bg=self.bg_color, fg=self.foreground_color)]
+
+        info_values = [Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, textvariable=self.chat_server, bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, textvariable=self.username, bg=self.bg_color, fg=self.foreground_color),
+                            Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color)]
+
+        for n in range(len(info_keys)):
+            info_keys[n].grid(row=n, column=0, sticky=E)
+            info_values[n].grid(row=n, column=1, sticky=W)
+
+        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5, font="Impact")
+        ad.pack(padx=5, pady=5)
+
+        # TOOLBAR BUTTONS
+
+        def conn_or_disconn():
+            if self.c_or_dc.get() == "Connect":
+                for thread in threading.enumerate():
+                    if str(thread)[0:15] == "<Thread(connect":
+                        return 0
+                manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1, name="connect")
+                manual_conn_thread.start()
+            elif self.c_or_dc.get() == "Disconnect":
+                self.disconnect()
+        
+        def conn():
+            for thread in threading.enumerate():
+                if str(thread)[0:15] == "<Thread(connect":
+                    return
+            manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1, name="connect")
+            manual_conn_thread.start()
+        
+        def swap_server():
+            self.disconnect()
+            manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1, name="connect")
+            manual_conn_thread.start()
+
+        self.c_or_dc = StringVar()
+        self.c_or_dc.set("Connect")
+        connect_butt = Button(self.toolbar_frame,
+                              textvariable=self.c_or_dc,
+                              command=conn_or_disconn,
+                              bg=self.butt_color,
+                              bd=2,
+                              height=2,
+                              fg=self.butt_fg_color,
+                              activebackground=self.active_butt_color)
+        
+        self.connection_butt = Menubutton(self.toolbar_frame,
+                                          text="Connection",
+                                          relief=RAISED,
+                                          bd=2,
+                                          height=2,
+                                          bg=self.butt_color,
+                                          fg=self.butt_fg_color,
+                                          activebackground=self.active_butt_color)
+        self.connection_butt.menu = Menu(self.connection_butt,
+                                         bd=2,
+                                         tearoff=0,
+                                         bg=self.butt_color,
+                                         fg=self.butt_fg_color,
+                                         activebackground=self.active_butt_color)
+        self.connection_butt['menu']=self.connection_butt.menu
+        self.connection_butt.menu.add_command(label="Connect", command=conn, state="normal")
+        self.connection_butt.menu.add_command(label="Swap server", command=swap_server, state="disabled")
+        self.connection_butt.menu.add_command(label="Disconnect", command=self.disconnect, state="disabled")
+        
+        self.profile_butt = Menubutton(self.toolbar_frame,
+                                       text="Profiles",
+                                       relief=RAISED,
+                                       bd=2,
+                                       height=2,
+                                       bg=self.butt_color,
+                                       fg=self.butt_fg_color,
+                                       activebackground=self.active_butt_color)
+        self.profile_butt.menu = Menu(self.profile_butt,
+                                      bd=2,
+                                      tearoff=0,
+                                      bg=self.butt_color,
+                                      fg=self.butt_fg_color,
+                                      activebackground=self.active_butt_color)
+
+        def new_profile():
+            #by starting this in a new thread you will be able to recive messages while creating profiles
+            for thread in threading.enumerate():
+                if str(thread)[0:19]=="<Thread(new_profile":
+                    return 0
+            new_profile_thread = threading.Thread(target=self.new_profile, daemon=1, name="new_profile")
+            new_profile_thread.start()
+
+        def edit_profile():
+            for thread in threading.enumerate():
+                if str(thread)[0:20]=="<Thread(edit_profile":
+                    return 0
+            edit_profile_thread = threading.Thread(target=self.edit_profiles, daemon=1, name="edit_profile")
+            edit_profile_thread.start()
+
+        def settings():
+            for thread in threading.enumerate():
+                if str(thread)[0:16]=="<Thread(settings":
+                    return 0
+            settings_thread = threading.Thread(target=self.settings, daemon=1, name="settings")
+            settings_thread.start()
+
+        self.profile_butt['menu']=self.profile_butt.menu
+        self.profile_butt.menu.add_command(label='New', command=new_profile)
+        self.profile_butt.menu.add_command(label='Edit', command=edit_profile)
+        self.profile_butt.menu.add_separator()
+
+        #adds the pre-existing profiles
+        with open("profiles.json","r") as profile_file:
+            profiles = json.load(profile_file)
+        
+        for label in profiles:
+            self.add_profile_to_butt_cascade(label)
+        #done adding the pre-existing profiles
+
+        settings_butt = Button(self.toolbar_frame,
+                               text="Settings",
+                               height=2,
+                               bd=2,
+                               bg=self.butt_color,
+                               fg=self.butt_fg_color,
+                               activebackground=self.active_butt_color,
+                               command=settings)
+
+        connect_butt.pack(side=LEFT, padx=3, pady=2)
+        self.connection_butt.pack(side=LEFT, padx=3, pady=2)
+        self.profile_butt.pack(side=LEFT, padx=3, pady=2)
+        settings_butt.pack(side=LEFT, padx=3, pady=2)
+
+    def read_input(self):
+        if self.user_input.get() == '':
+            return 0
+        try:
+            if self.user_input.get()[0:1] == "/":
+                self.command_interpreter(self.user_input.get())  # lauches command intepreter
+            else:
+                self.s.send(str.encode(self.user_input.get()))  # was not a comman
+
+        except OSError:#not connectde to a sever
+            self.print_to_log(self.user_input.get())
+        except AttributeError:#not connectde to a sever, different depending on platform
+            self.print_to_log(self.user_input.get())
+        finally:
+            self.user_input.set("")
+
+    def add_profile_to_butt_cascade(self, label):
+        n=len(self.profile_button_selections)
+        self.profile_button_selections.append(ProfileButtons(n, label))
+        self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[n].call)
+
+    def print_to_log(self, msg):
+        self.msg_log.insert(END, msg)
+        if self.msg_log.size() > 30:
+            self.msg_log.yview_scroll(1, UNITS) #scrolls 1 line down
 
     def new_profile(self):
         new_profile_window = Tk()
@@ -145,17 +425,15 @@ class GUI:
             if (name_field.get()=="") | (chat_server_field.get()=="") | (port_field.get()==0) | (network_protocol.get()=="") | (username_field.get()==""):
                 #ensures that no field is empty
                 return 0
-            profiles = configparser.ConfigParser()
-            profiles.read("profiles.ini")
-            profiles.add_section(name_field.get())
-            profiles.set(name_field.get(), "ip", chat_server_field.get())
-            profiles.set(name_field.get(), "port", port_field.get())
-            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar
-            profiles.set(name_field.get(), "username", username_field.get())
-
+            with open("profiles.json","r") as profile_file:
+                profiles=json.load(profile_file)
+            profiles[name_field.get()]={"ip": chat_server_field.get(),
+                                        "port": port_field.get(),
+                                        "network_protocol": network_protocol.get(),
+                                        "username": username_field.get()}
             try:
-                with open('profiles.ini', 'w') as new_configfile:
-                    profiles.write(new_configfile)
+                with open("profiles.json", "w") as new_configfile:
+                    json.dump(profiles, new_configfile, indent=4)
                     self.add_profile_to_butt_cascade(name_field.get())
                     tkinter.messagebox.showinfo("Saved", "Saved Successfully")
             except:
@@ -291,22 +569,19 @@ class GUI:
             if (name_field.get()=="") | (chat_server_field.get()=="") | (port_field.get()==0) | (network_protocol.get()=="") | (username_field.get()==""):
                 return 0
                 #ensures that no field is empty
-
-            profiles = configparser.ConfigParser()
-            profiles.read("profiles.ini")
-
-            self.remove_profile_from_butt_cascade(profile_name)#removes the old version
-            profiles.remove_section(profile_name)#same
-
-            profiles.add_section(name_field.get())
-            profiles.set(name_field.get(), "ip", chat_server_field.get())
-            profiles.set(name_field.get(), "port", port_field.get())
-            profiles.set(name_field.get(), "network_protocol", network_protocol.get())#this is a StringVar, not an Entry object
-            profiles.set(name_field.get(), "username", username_field.get())
+            with open("profiles.json","r") as profile_file:
+                profiles = json.load(profile_file)
+            self.remove_profile_from_butt_cascade(profile_name) #removes the old version
+            del profiles[profile_name] #same
+            
+            profiles[name_field.get()] = {"ip": chat_server_field.get(),
+                                          "port": port_field.get(),
+                                          "network_protocol": network_protocol.get(), #this is a StringVar, not an Entry object
+                                          "username": username_field.get()}
 
             try:
-                with open('profiles.ini', 'w') as new_configfile:
-                    profiles.write(new_configfile)
+                with open("profiles.json", "w") as new_configfile:
+                    json.dump(profiles, new_configfile, indent=4)
                     self.add_profile_to_butt_cascade(name_field.get())
                     tkinter.messagebox.showinfo("Saved", "Saved Successfully")
             except:
@@ -348,59 +623,55 @@ class GUI:
                                listvariable=profiles_var,
                                exportselection=0,
                                highlightbackground="black")
-
-        profiles = configparser.ConfigParser()
-        profiles.read("profiles.ini")
-
-        for n in profiles.sections():
+        with open("profiles.json","r") as profile_file:
+            profiles = json.load(profile_file)
+        
+        for n in profiles:
             select_profile.insert(END, n)
         select_profile.pack(side=LEFT, padx=3, pady=3)
-
+        
         the_rest_frame=Frame(edit_profile_window, bg=self.bg_color)
         the_rest_frame.pack(side=RIGHT, padx=3, pady=3)
-
+        
         self.info_frame=LabelFrame(the_rest_frame, text="Info", bg=self.bg_color, fg=self.foreground_color)
         self.info_frame.pack(pady=3)
-
+        
         test=Label(self.info_frame, text="Comming soon...", bg=self.bg_color, fg=self.foreground_color)
-        test.grid(pady=3)
-
+        test.grid(pady=3) #Albap uses grid() here, but pack() everywhere else... why? -Tiny
+        
         def new():
             edit_profile_window.destroy()
             self.new_profile()
-
+        
         def edit():
             try:
-                profile_to_be_edited = profiles.sections()[select_profile.curselection()[0]]
+                profile_to_be_edited = select_profile.get(ACTIVE) 
             except IndexError:
                 return 0
                 #nothing was selected
-            username = profiles.get(profile_to_be_edited, "username")
-            ip = profiles.get(profile_to_be_edited, "ip")
-            port = profiles.get(profile_to_be_edited, "port")
-            network_protocol = profiles.get(profile_to_be_edited, "network_protocol")
+            username = (profiles[profile_to_be_edited])["username"]
+            ip = (profiles[profile_to_be_edited])["ip"]
+            port = (profiles[profile_to_be_edited])["port"]
+            network_protocol = (profiles[profile_to_be_edited])["network_protocol"]
             #mellanlagring är endast för att det ska bli lättare att skriva/läsa
-
+            
             #delete()
             edit_profile_window.destroy()
             self.edit_specific_profile(profile_to_be_edited, username, ip, port, network_protocol)
-
         def delete():
             try:
-                label=profiles.sections()[select_profile.curselection()[0]]
+                label = select_profile.get(ACTIVE)
             except IndexError:
                 return 0
                 #nothing was selected
-            profiles.remove_section(label)
-
-            profiles.update()# vet ej vad denna gör men kan ej skada
+            del profiles[label]
+            
             self.remove_profile_from_butt_cascade(label)
             select_profile.delete(select_profile.curselection()[0])
-            select_profile.update()  # vet ej vad denna gör men kan ej skada
-
-            with open('profiles.ini', 'w') as new_configfile:
-                profiles.write(new_configfile)
-
+            
+            with open("profiles.json", "w") as new_configfile:
+                json.dump(profiles, new_configfile, indent=4)
+        
         new_butt=Button(the_rest_frame,
                         text="New",
                         width=6,
@@ -410,7 +681,7 @@ class GUI:
                         bg=self.butt_color,
                         activebackground=self.active_butt_color)
         new_butt.pack(pady=3)
-
+        
         edit_butt=Button(the_rest_frame,
                          text="Edit",
                          width=6,
@@ -420,7 +691,7 @@ class GUI:
                          bg=self.butt_color,
                          activebackground=self.active_butt_color)
         edit_butt.pack(pady=3)
-
+        
         delete_butt = Button(the_rest_frame,
                              text="Delete",
                              fg=self.butt_fg_color,
@@ -435,24 +706,23 @@ class GUI:
         #rutor: select, info
 
         edit_profile_window.mainloop()
-
+        
     def settings(self):
 
         settings_window = Tk()
         settings_window.title("Settings")
         settings_window.config(bg=self.bg_color)
-
-        settings = configparser.ConfigParser()
-        settings.read("settings.ini")
-
-        theme = configparser.ConfigParser()
-        theme.read("theme.ini")
-
+        
+        with open("settings.json","r") as settings_file:
+            settings = json.load(settings_file)
+        with open("theme.json","r") as theme_file:
+            theme = json.load(theme_file)
+        
         show_errors_var = StringVar()
-
+        
         def setYes():
             show_errors_var.set("Yes")
-
+        
         def setNo():
             show_errors_var.set("No")
 
@@ -478,24 +748,23 @@ class GUI:
                               bg=self.bg_color,
                               fg=self.foreground_color)
         no_butt.grid()
-
-        if settings.get("DEFAULT", "show_errors") == "True":
+        if (settings["DEFAULT"])["show_errors"]:
             yes_butt.select()
             yes_butt.invoke()
-        elif settings.get("DEFAULT", "show_errors") == "False":
+        elif not (settings["DEFAULT"])["show_errors"]:
             no_butt.select()
             no_butt.invoke()
         else:
             tkinter.messagebox.showerror("Error", "Corrupt settings file")
             settings_window.destroy()
             return 1
-
+        
         timeout_frame = LabelFrame(settings_window,
                                  bg=self.bg_color,
                                  text="Networks",
                                  fg=self.foreground_color)
         timeout_frame.pack(padx=5)
-
+        
         Label(timeout_frame,
               bg=self.bg_color,
               text="Connection timeout[ms]",
@@ -508,20 +777,20 @@ class GUI:
                                 to=10000,
                                 increment=500)
         timeout_spinbox.grid(row=0, column=1, sticky=W)
-
+        
         timeout_spinbox.delete(0, END)
-        timeout_spinbox.insert(END, settings.get("DEFAULT", "timeout_milliseconds"))
-
+        timeout_spinbox.insert(END, (settings["DEFAULT"])["timeout_milliseconds"])
+        
         theme_frame = LabelFrame(settings_window,
                                  bg=self.bg_color,
                                  text="Theme",
                                  fg=self.foreground_color)
         theme_frame.pack(padx=5)
-
+        
         theme_selector_var=StringVar(theme_frame)
-        avalible_themes = theme.sections()
-        avalible_themes.pop(0) #removes the "selected" section
-
+        available_themes=dict(theme)
+        del available_themes["selected"] #removes the "selected" key (and its value)
+        
         def change_selected_theme(var):
             #clears all the data
             bg_field.delete(0, END)
@@ -531,21 +800,21 @@ class GUI:
             butt_fg_field.delete(0, END)
             fg_field.delete(0, END)
             theme_name_field.delete(0, END)
-
+            
             #inserts the new data
             self.selected_theme.set(var)
-            bg_field.insert(END, theme.get(self.selected_theme.get(), "background"))
-            alt_bg_field.insert(END, theme.get(self.selected_theme.get(), "secondary_background"))
-            butt_field.insert(END, theme.get(self.selected_theme.get(), "button_color"))
-            active_butt_field.insert(END, theme.get(self.selected_theme.get(), "active_button_color"))
-            butt_fg_field.insert(END, theme.get(self.selected_theme.get(), "button_foreground"))
-            fg_field.insert(END, theme.get(self.selected_theme.get(), "foreground"))
+            bg_field.insert(END, (theme[self.selected_theme.get()])["background"])
+            alt_bg_field.insert(END, (theme[self.selected_theme.get()])["secondary_background"])
+            butt_field.insert(END, (theme[self.selected_theme.get()])["button_color"])
+            active_butt_field.insert(END, (theme[self.selected_theme.get()])["active_button_color"])
+            butt_fg_field.insert(END, (theme[self.selected_theme.get()])["button_foreground"])
+            fg_field.insert(END, (theme[self.selected_theme.get()])["foreground"])
             theme_name_field.insert(END, self.selected_theme.get())
-
+        
         theme_selector_var.set(self.selected_theme.get())
         theme_selector=OptionMenu(theme_frame,
                                   theme_selector_var,
-                                  *avalible_themes, command=change_selected_theme)
+                                  *available_themes, command=change_selected_theme)
         theme_selector.config(bg=self.butt_color,
                               fg=self.butt_fg_color,
                               activebackground=self.active_butt_color,
@@ -633,31 +902,29 @@ class GUI:
                               bg="white")
         theme_name_field.insert(END, self.selected_theme.get())
         theme_name_field.grid(row=7, column=1, sticky=W, padx=3)
-
-
-
+        
         def save():
             if show_errors_var.get() == "Yes":
-                settings.set("DEFAULT", "show_errors", "True")
+                (settings["DEFAULT"])["show_errors"]=True
                 self.show_errors=True
             else:
-                settings.set("DEFAULT", "show_errors", "False")
+                (settings["DEFAULT"])["show_errors"]=False
                 self.show_errors=False
-
+            
             try:
                 self.timeout=int(timeout_spinbox.get())
             except:
                 timeout_spinbox.delete(0, END)
                 return 0
-            settings.set("DEFAULT", "timeout_milliseconds", str(self.timeout))
-
-            theme.set(self.selected_theme.get(), "background", bg_field.get())
-            theme.set(self.selected_theme.get(), "secondary_background", alt_bg_field.get())
-            theme.set(self.selected_theme.get(), "button_color", butt_field.get())
-            theme.set(self.selected_theme.get(), "active_button_color", active_butt_field.get())
-            theme.set(self.selected_theme.get(), "button_foreground", butt_fg_field.get())
-            theme.set(self.selected_theme.get(), "foreground", fg_field.get())
-            theme.set("selected", "name", self.selected_theme.get())
+            (settings["DEFAULT"])["timeout_milliseconds"]=str(self.timeout)
+            
+            (theme[self.selected_theme.get()])["background"]=bg_field.get()
+            (theme[self.selected_theme.get()])["secondary_background"]=alt_bg_field.get()
+            (theme[self.selected_theme.get()])["button_color"]=butt_field.get()
+            (theme[self.selected_theme.get()])["active_button_color"]=active_butt_field.get()
+            (theme[self.selected_theme.get()])["button_foreground"]=butt_fg_field.get()
+            (theme[self.selected_theme.get()])["foreground"]=fg_field.get()
+            (theme["selected"])["name"]=theme_name_field.get()
 
             self.bg_color=bg_field.get()
             self.second_bg_color=alt_bg_field.get()
@@ -673,32 +940,27 @@ class GUI:
             self.info_frame.config(bg=self.bg_color)
             self.left_hand_frame.config(bg=self.bg_color)
             self.right_hand_frame.config(bg=self.bg_color)'''
-
             try:
-                with open('theme.ini', 'w') as new_theme:
-                    theme.write(new_theme)
-                    theme.update()
-                    new_theme.close()
-
-                with open('settings.ini', 'w') as new_configfile:
-                    settings.write(new_configfile)
-                    tkinter.messagebox.showinfo("Saved",
-                                                "Saved successfully\nPlease restart dolphin to make changes take full effect")
-                    settings.update()
-                    new_configfile.close()
-
-                    self.bg_color=bg_field.get()
-                    self.second_bg_color=alt_bg_field.get()
-                    self.butt_color=butt_field.get()
-                    self.active_butt_color=active_butt_field.get()
-                    self.butt_fg_color=butt_fg_field.get()
-                    self.foreground_color=fg_field.get()
-
-                    settings_window.destroy()
+                with open("theme.json", "w") as new_theme:
+                    json.dump(theme, new_theme, indent=4)
+                with open("settings.json", "w") as new_configfile:
+                    json.dump(settings, new_configfile, indent=4)
+                tkinter.messagebox.showinfo("Saved",
+                                            "Saved successfully\nPlease restart dolphin to make changes take full effect")
+                
+                self.bg_color=bg_field.get()
+                self.second_bg_color=alt_bg_field.get()
+                self.butt_color=butt_field.get()
+                self.active_butt_color=active_butt_field.get()
+                self.butt_fg_color=butt_fg_field.get()
+                self.foreground_color=fg_field.get()
+                #self.build_window(window)
+                
+                settings_window.destroy()
+            
             except:
                 tkinter.messagebox.showerror("Error", "Could not save")
                 settings_window.destroy()
-
         def cancel():
             settings_window.destroy()
             return 0
@@ -753,27 +1015,6 @@ class GUI:
         except OSError as e:
             if self.show_errors:
                 self.print_to_log(e)
-
-    def print_to_log(self, msg):
-        self.msg_log.insert(END, msg)
-        if self.msg_log.size() > 30:
-            self.msg_log.yview_scroll(1, UNITS) #scrolls 1 line down
-
-    def read_input(self):
-        if self.user_input.get() == '':
-            return 0
-        try:
-            if self.user_input.get()[0:1] == "/":
-                self.command_interpreter(self.user_input.get())  # lauches command intepreter
-            else:
-                self.s.send(str.encode(self.user_input.get()))  # was not a comman
-
-        except OSError:#not connectde to a sever
-            self.print_to_log(self.user_input.get())
-        except AttributeError:#not connectde to a sever, different depending on platform
-            self.print_to_log(self.user_input.get())
-        finally:
-            self.user_input.set("")
 
     def manual_connect(self):
         connet_window=Tk()
@@ -885,6 +1126,9 @@ class GUI:
         #self.chat_server.set('') this is done in self.recieve_messages()
         self.port.set(0)
         self.network_protocol.set('')
+        self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Connect"), state="normal")
+        self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Swap server"), state="disabled")
+        self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Disconnect"), state="disabled")
         self.c_or_dc.set("Connect")
 
     def connect(self):
@@ -899,194 +1143,19 @@ class GUI:
             self.s.connect((self.chat_server.get(), self.port.get()))
             self.s.settimeout(None)
             self.print_to_log(("Connected to: " + self.chat_server.get()))
-            data = self.s.recv(2048)  # recieve the message of the day
-            self.print_to_log("Message of the day: " + str(data.decode('utf-8')))  # currently just a random quote
+            self.server_version = (self.s.recv(2048)).decode("utf-8")
+            self.s.send(str.encode(version))
             self.s.send(str.encode(self.username.get()))  # inform the server of your username
             reciever = threading.Thread(target=self.recieve_messages, daemon=0)
             reciever.start()
+            self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Connect"), state="disabled")
+            self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Swap server"), state="normal")
+            self.connection_butt.menu.entryconfig(self.connection_butt.menu.index("Disconnect"), state="normal")
             self.c_or_dc.set("Disconnect")
         except socket.error as e:  # couldn't connect to given IP + port
             self.print_to_log(("Cound not connect to " + self.chat_server.get() + ":" + str(self.port.get())))
             if self.show_errors:
                 self.print_to_log(str(e))
-
-    def build_window(self, window):
-        window.title("Dolphin")
-
-        #Q:why are all the frames "self."?
-        #A:it is a legacy that does not really need to be removed but is serves no purpose
-        #that is also the case with the self.god_window frame
-        self.god_window=Frame(window, bg=self.second_bg_color)
-        self.god_window.pack()
-        self.toolbar_frame = Frame(self.god_window, bg=self.second_bg_color)  # the toolbar frame
-        self.toolbar_frame.pack(side=TOP, fill=X)
-
-        self.right_hand_frame = Frame(self.god_window, bg=self.bg_color)  # splits the rest of the window in two
-        self.right_hand_frame.pack(side=RIGHT, fill=Y)
-        self.left_hand_frame = Frame(self.god_window, bg=self.bg_color)
-        self.left_hand_frame.pack(side=LEFT, fill=Y)
-
-        self.info_frame = LabelFrame(self.right_hand_frame,  # creates the info frame
-                                text="Connection information",
-                                bg=self.bg_color,
-                                fg=self.foreground_color)
-        self.info_frame.pack(pady=5, padx=5)
-
-        ad_frame = Frame(self.right_hand_frame, bg="black")  # the advertisment frame (optinal)
-        ad_frame.pack(side=BOTTOM)
-        self.entry_frame = Frame(self.left_hand_frame, bg=self.bg_color)
-        self.entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
-
-        self.log_frame = Frame(self.left_hand_frame, bg=self.bg_color)  # the log and log scroll frame
-        self.log_frame.pack(side=LEFT, fill=Y)
-        #the following objects actuallly need to have the "self." part
-
-        #Label(self.entry_frame, text=">>>", bg=self.bg_color, fg=self.foreground_color).pack(side=RIGHT)  # the 3 arrows
-        Button(self.entry_frame,
-               text=" Send ",
-               bg=self.butt_color,
-               activebackground=self.active_butt_color,
-               fg=self.butt_fg_color,
-               command=self.read_input).pack(side=RIGHT)
-
-        scroll = Scrollbar(self.log_frame, orient=VERTICAL)  # scroller
-        scroll.pack(side=RIGHT, fill=Y, pady=5)
-
-        self.log = StringVar()  # holds the data for the log widow
-        self.msg_log = Listbox(self.log_frame,  # the logframe
-                               height=30, width=100,
-                               bg="white",
-                               selectbackground="white",
-                               selectforeground="black",
-                               selectmode=SINGLE,
-                               activestyle=NONE,
-                               listvariable=self.log,
-                               exportselection=0,
-                               highlightbackground="black",
-                               yscrollcommand=scroll.set)  # text thing
-        self.msg_log.pack(padx=5, pady=5, side=LEFT)
-        scroll['command'] = self.msg_log.yview
-
-        self.user_input = StringVar()
-        entry = Entry(self.entry_frame,  # the input field
-                      width=95,
-                      highlightbackground="black",
-                      bg="white",
-                      exportselection=0,
-                      textvariable=self.user_input)
-
-        def entry_event_handler(event, self=self):
-            self.read_input()
-            # the entry.bind() below insists to pass the event argument in the first variable slot
-            # even if the first one is "self"
-            # in order to allow the "self" argument to  be taken in the second slot is has to be done like this
-            # TL:DR python is stupid
-
-        entry.bind('<Return>', entry_event_handler)  # makes enter key send message
-        entry.pack(padx=5, pady=5, side=LEFT)
-
-        info_keys = [Label(self.info_frame, text="Server name:", bg=self.bg_color, fg=self.foreground_color),
-                          Label(self.info_frame, text="IP:", bg=self.bg_color, fg=self.foreground_color),
-                          Label(self.info_frame, text="Username:", bg=self.bg_color, fg=self.foreground_color),
-                          Label(self.info_frame, text="Level:", bg=self.bg_color, fg=self.foreground_color)]
-
-        info_values = [Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color),
-                            Label(self.info_frame, textvariable=self.chat_server, bg=self.bg_color, fg=self.foreground_color),
-                            Label(self.info_frame, textvariable=self.username, bg=self.bg_color, fg=self.foreground_color),
-                            Label(self.info_frame, text="placeholder", bg=self.bg_color, fg=self.foreground_color)]
-
-        for n in range(len(info_keys)):
-            info_keys[n].grid(row=n, column=0, sticky=E)
-            info_values[n].grid(row=n, column=1, sticky=W)
-
-        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5, font="Impact")
-        ad.pack(padx=5, pady=5)
-
-        # TOOLBAR BUTTONS
-
-        def conn_or_disconn():
-            if self.c_or_dc.get() == "Connect":
-                for thread in threading.enumerate():
-                    if str(thread)[0:15] == "<Thread(connect":
-                        return 0
-                manual_conn_thread = threading.Thread(target=self.manual_connect, daemon=1, name="connect")
-                manual_conn_thread.start()
-            elif self.c_or_dc.get() == "Disconnect":
-                self.disconnect()
-
-        self.c_or_dc = StringVar()
-        self.c_or_dc.set("Connect")
-        connect_butt = Button(self.toolbar_frame,
-                              textvariable=self.c_or_dc,
-                              command=conn_or_disconn,
-                              bg=self.butt_color,
-                              bd=2,
-                              height=2,
-                              fg=self.butt_fg_color,
-                              activebackground=self.active_butt_color)
-
-        self.profile_butt = Menubutton(self.toolbar_frame,
-                                       text="Profiles",
-                                       relief=RAISED,
-                                       bd=2,
-                                       height=2,
-                                       bg=self.butt_color,
-                                       fg=self.butt_fg_color,
-                                       activebackground=self.active_butt_color)
-        self.profile_butt.menu=Menu(self.profile_butt,
-                                    bd=2,
-                                    tearoff=0,
-                                    bg=self.butt_color,
-                                    fg=self.butt_fg_color,
-                                    activebackground=self.active_butt_color)
-
-        def new_profile():
-            #by starting this in a new thread you will be able to recive messages while creating profiles
-            for thread in threading.enumerate():
-                if str(thread)[0:19]=="<Thread(new_profile":
-                    return 0
-            new_profile_thread = threading.Thread(target=self.new_profile, daemon=1, name="new_profile")
-            new_profile_thread.start()
-
-        def edit_profile():
-            for thread in threading.enumerate():
-                if str(thread)[0:20]=="<Thread(edit_profile":
-                    return 0
-            edit_profile_thread = threading.Thread(target=self.edit_profiles, daemon=1, name="edit_profile")
-            edit_profile_thread.start()
-
-        def settings():
-            for thread in threading.enumerate():
-                if str(thread)[0:16]=="<Thread(settings":
-                    return 0
-            settings_thread = threading.Thread(target=self.settings, daemon=1, name="settings")
-            settings_thread.start()
-
-        self.profile_butt['menu']=self.profile_butt.menu
-        self.profile_butt.menu.add_command(label='New', command=new_profile)
-        self.profile_butt.menu.add_command(label='Edit', command=edit_profile)
-        self.profile_butt.menu.add_separator()
-
-        #adds the pre-existing profiles
-        profiles = configparser.ConfigParser()
-        profiles.read("profiles.ini")
-        
-        for label in profiles.sections():
-            self.add_profile_to_butt_cascade(label)
-        #done adding the pre-existing profiles
-
-        settings_butt = Button(self.toolbar_frame,
-                               text="Settings",
-                               height=2,
-                               bd=2,
-                               bg=self.butt_color,
-                               fg=self.butt_fg_color,
-                               activebackground=self.active_butt_color,
-                               command=settings)
-
-        connect_butt.pack(side=LEFT, padx=3, pady=2)
-        self.profile_butt.pack(side=LEFT, padx=3, pady=2)
-        settings_butt.pack(side=LEFT, padx=3, pady=2)
 
     def remove_profile_from_butt_cascade(self, label):
         menu_index=3
@@ -1104,56 +1173,6 @@ class GUI:
                 #objektet var None och har därför tagigts bort
                 #detta innebär att alla element "under" (grafiskt) i menyn har flyttats ett steg upp(grafiskt) eller ett steg ner i dess index
                 #för att kompensera för detta så ökar INTE menu_index.
-
-    def add_profile_to_butt_cascade(self, label):
-        n=len(self.profile_button_selections)
-        self.profile_button_selections.append(ProfileButtons(n, label))
-        self.profile_butt.menu.add_command(label=label, command=self.profile_button_selections[n].call)
-
-    def __init__(self, window):
-        self.chat_server = StringVar()
-        self.port = IntVar()
-        self.username = StringVar()
-        self.network_protocol = StringVar()
-        self.profile_button_selections=[]
-
-        try:
-            theme = configparser.ConfigParser()
-            theme.read("theme.ini")
-
-            self.selected_theme = StringVar()
-            self.selected_theme.set(theme.get("selected", "name"))
-
-            self.bg_color = theme.get(self.selected_theme.get(), "background")
-            self.second_bg_color = theme.get(self.selected_theme.get(), "secondary_background")
-            self.butt_color = theme.get(self.selected_theme.get(), "button_color")
-            self.active_butt_color = theme.get(self.selected_theme.get(), "active_button_color")  # color when mouse hovers over it/clicks it
-            self.butt_fg_color = theme.get(self.selected_theme.get(), "button_foreground")
-            self.foreground_color = theme.get(self.selected_theme.get(), "foreground")
-            # self.font = font.Font(family=theme.get(self.selected_theme.get(), "font"), size=10) this is also a legacy
-        except:
-            tkinter.messagebox.showerror("Error", "Corrupt theme file")
-        try:
-            settings_file = configparser.ConfigParser()
-            settings_file.read("settings.ini")
-
-            if settings_file.get("DEFAULT", "show_errors") == "True":
-                self.show_errors = True
-            elif settings_file.get("DEFAULT", "show_errors") == "False":
-                self.show_errors = False
-            else:
-                raise configparser.NoOptionError  # not quite the right error but hey
-
-            self.timeout= settings_file.getint("DEFAULT", "timeout_milliseconds")/1000 # det skall vara i millisekunder
-        except:
-            tkinter.messagebox.showerror("Error", "Corrupt settings file")
-
-        self.command_dict = {"/help": self.spacer(20, "/help") + "view this page",
-                        "/quit": self.spacer(20, "/quit") + "exit program",
-                             "/dc": self.spacer(20, "/dc") + "disconnect from server"}
-
-        self.build_window(window)
-        self.print_to_log(version)
 
 window = Tk()  # creates the main window
 
