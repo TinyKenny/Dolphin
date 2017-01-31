@@ -8,8 +8,6 @@ import configparser
 import time
 import json
 
-#server skickar version till klient, sen skickar klient version till server
-
 
 version="0.0.2.4"
 global gui_obj #make this object global so that it can be used in ProfileButtons
