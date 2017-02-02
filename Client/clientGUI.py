@@ -76,7 +76,7 @@ class GUI:
                              "/dc": self.spacer(20, "/dc") + "disconnect from server"}
 
         self.build_window(window)
-        self.print_to_log("Version "+version+" ALPHA")
+        self.print_to_log("Version "+version+" BETA")
 
     def spacer(self, spaces, string):
         return ((spaces - len(string)) * " ")
