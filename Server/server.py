@@ -462,7 +462,7 @@ else:
 	if not os.path.exists("./serverlogs/chatlogs"):
 		os.makedirs("./serverlogs/chatlogs")
 
-version="0.3.1.0"
+version="0.4.0.3"
 with open("./serverlogs/debug/"+str(datetime.date.today())+".txt","a") as debuglog:
     debuglog.write(time.strftime("[%H:%M:%S] ")+"Server started: v"+version+"\n")
 
