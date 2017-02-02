@@ -35,12 +35,25 @@ v 0.3.0.0
     +The server now only stores the decoded username.
     ~Updated the welcome message.
 
-
 v 0.3.1.0
 + Cleaning the code
 + Optimization
-+ Fixen an unhandled exception when a user would disconnect wile selecting username
++ Fixed an unhandled exception when a user would disconnect wile selecting username
 + The chatlog will now log the start time of the server
 + Message of the day/Welcome message will now be recived after the username has been communicated
 + Debug log now loggs platform
 + Debug log is now being utilized more
+
+v 0.4.0.3
++ Fixed a bug where a root user could not terminate the server
++ Removed /help command from the help page
++ Debug log now logs the username and raddr of roots using commands
++ Server operator can now see when users connect
++ Fixed a bug where a root user could not read the help page
++ Debug log now logs promotions
++ Server operator can now see if a user gains root acceses
++ Fixed a bug where /users would not function properly for users
++ Debug log now logs disconnecting users
++ Debug log now logs the client version of the users
++ Client and server version communication implemented 
++ "message of the day" is now an illegal username
