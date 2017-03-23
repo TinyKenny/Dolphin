@@ -1003,7 +1003,7 @@ class GUI:
             while True:
                 server_message = self.s.recv(2048).decode('utf-8')
                 if not server_message:
-                    raise ConnectionError  # meddelandet är tomt, linux har kna ha lite svårt att fatta det
+                    raise ConnectionError  # meddelandet är tomt, linux kan ha lite svårt att fatta det
                 self.print_to_log(server_message)
         except ConnectionError as e:  # this will happen when the server is shut down
             self.print_to_log("Disconnected from: " + self.chat_server.get())
