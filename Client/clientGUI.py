@@ -153,7 +153,6 @@ class GUI:
             # the entry.bind() below insists to pass the event argument in the first variable slot
             # even if the first one is "self"
             # in order to allow the "self" argument to  be taken in the second slot is has to be done like this
-            # TL:DR python is stupid
 
         entry.bind('<Return>', entry_event_handler)  # makes enter key send message
         entry.pack(padx=5, pady=5, side=LEFT, fill=X, expand=YES)
@@ -300,11 +299,11 @@ class GUI:
             if self.user_input.get()[0:1] == "/":
                 self.command_interpreter(self.user_input.get())  # lauches command intepreter
             else:
-                self.s.send(str.encode(self.user_input.get()))  # was not a comman
+                self.s.send(str.encode(self.user_input.get()))  # was not a command
 
-        except OSError:#not connectde to a sever
+        except OSError:#not connected to a sever
             self.print_to_log(self.user_input.get())
-        except AttributeError:#not connectde to a sever, different depending on platform
+        except AttributeError:#not connected to a sever, different depending on platform
             self.print_to_log(self.user_input.get())
         finally:
             self.user_input.set("")
@@ -1004,7 +1003,7 @@ class GUI:
             while True:
                 server_message = self.s.recv(2048).decode('utf-8')
                 if not server_message:
-                    raise ConnectionError  # meddelandet är tomt, linux har lite svårt att fatta när det är dags att gå hem annars
+                    raise ConnectionError  # meddelandet är tomt, linux har kna ha lite svårt att fatta det
                 self.print_to_log(server_message)
         except ConnectionError as e:  # this will happen when the server is shut down
             self.print_to_log("Disconnected from: " + self.chat_server.get())
