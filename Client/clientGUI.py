@@ -103,9 +103,6 @@ class GUI:
                                 fg=self.foreground_color)
         self.info_frame.pack(pady=5, padx=5)
 
-        ad_frame = Frame(self.right_hand_frame, bg="black")  # the advertisment frame (optinal)
-        ad_frame.pack(side=BOTTOM)
-        
         self.entry_frame = Frame(self.left_hand_frame, bg=self.bg_color)
         self.entry_frame.pack(side=BOTTOM, fill=X)  # user input frame
         
@@ -170,9 +167,6 @@ class GUI:
         for n in range(len(info_keys)):
             info_keys[n].grid(row=n, column=0, sticky=E)
             info_values[n].grid(row=n, column=1, sticky=W)
-
-        ad = Label(ad_frame, text="csgogambling.com", relief=GROOVE, fg="yellow", bg="red", bd=1, height=5, font="Impact")
-        ad.pack(padx=5, pady=5)
 
         # TOOLBAR BUTTONS
 
